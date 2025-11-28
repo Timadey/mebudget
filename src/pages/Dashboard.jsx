@@ -1,26 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
+import ExpenseForm from '../components/ExpenseForm';
+import Modal from '../components/Modal';
 
 export default function Dashboard() {
     const [data, setData] = useState({ categories: [], transactions: [], investments: [] });
     const [loading, setLoading] = useState(true);
+    const [showTransactionModal, setShowTransactionModal] = useState(false);
+
+    const fetchData = async () => {
+        try {
+            const result = await api.getData();
+            setData(result);
+        } catch (error) {
+            console.error('Failed to fetch data', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const result = await api.getData();
-                setData(result);
-            } catch (error) {
-                console.error('Failed to fetch data', error);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchData();
     }, []);
 
-    // Calculate Summaries
     const totalExpenses = data.transactions
         ?.filter(t => t.type === 'Expense')
         .reduce((sum, t) => sum + Number(t.amount), 0) || 0;
@@ -28,13 +31,11 @@ export default function Dashboard() {
     const totalInvestments = data.investments
         ?.reduce((sum, i) => sum + Number(i.currentbalance), 0) || 0;
 
-    // Assuming a simple balance calculation (Income - Expenses) for demo purposes
-    // In a real app, this would be more complex or tracked separately
     const totalIncome = data.transactions
         ?.filter(t => t.type === 'Income')
         .reduce((sum, t) => sum + Number(t.amount), 0) || 0;
 
-    const totalBalance = totalIncome - totalExpenses + totalInvestments; // Simplified logic
+    const totalBalance = totalIncome - totalExpenses + totalInvestments;
 
     const recentTransactions = data.transactions?.slice(0, 5) || [];
 
@@ -44,10 +45,31 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6">
-            <header>
-                <h2 className="text-3xl font-bold text-white">Dashboard</h2>
-                <p className="text-slate-400">Welcome back, here's your financial overview.</p>
+            <header className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-3xl font-bold text-white">Dashboard</h2>
+                    <p className="text-slate-400">Welcome back, here's your financial overview.</p>
+                </div>
+                <button
+                    onClick={() => setShowTransactionModal(true)}
+                    className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium"
+                >
+                    <Plus size={20} />
+                    Log Transaction
+                </button>
             </header>
+
+            {/* Transaction Modal */}
+            <Modal
+                isOpen={showTransactionModal}
+                onClose={() => setShowTransactionModal(false)}
+                title="Log Transaction"
+            >
+                <ExpenseForm onExpenseAdded={() => {
+                    setShowTransactionModal(false);
+                    fetchData();
+                }} />
+            </Modal>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Summary Cards */}
@@ -104,7 +126,7 @@ export default function Dashboard() {
                                         </p>
                                     </div>
                                 </div>
-                                <span className={`font-medium ₦{t.type === 'Income' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                <span className={`font-medium ${t.type === 'Income' ? 'text-emerald-400' : 'text-rose-400'}`}>
                                     {t.type === 'Income' ? '+' : '-'}₦{Number(t.amount).toFixed(2)}
                                 </span>
                             </div>

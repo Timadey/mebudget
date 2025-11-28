@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, AlertTriangle, Settings, Wallet, TrendingDown } from 'lucide-react';
+import { Plus, AlertTriangle, Settings, Wallet, TrendingDown } from 'lucide-react';
 import { api } from '../services/api';
 import { settingsService } from '../services/settings';
 import ExpenseForm from '../components/ExpenseForm';
@@ -34,7 +34,6 @@ export default function Expenses() {
 
     const expenseCategories = data.categories?.filter(c => c.type === 'Expense') || [];
 
-    // Calculate date range based on budget duration
     const getDateRange = () => {
         const now = new Date();
         let startDate;
@@ -42,22 +41,21 @@ export default function Expenses() {
         switch (budgetDuration) {
             case 'weekly':
                 startDate = new Date(now);
-                startDate.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+                startDate.setDate(now.getDate() - now.getDay());
                 startDate.setHours(0, 0, 0, 0);
                 break;
             case 'yearly':
-                startDate = new Date(now.getFullYear(), 0, 1); // Start of year
+                startDate = new Date(now.getFullYear(), 0, 1);
                 break;
             case 'monthly':
             default:
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1); // Start of month
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
                 break;
         }
 
         return { startDate, endDate: now };
     };
 
-    // Calculate total spent in current period
     const calculatePeriodSpent = () => {
         const { startDate } = getDateRange();
         return data.transactions
@@ -99,13 +97,10 @@ export default function Expenses() {
                         Manage Categories
                     </button>
                     <button
-                        onClick={() => setShowForm(!showForm)}
-                        className={clsx(
-                            "px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium",
-                            showForm ? "bg-slate-700 hover:bg-slate-600 text-white" : "bg-primary hover:bg-primary-dark text-white"
-                        )}
+                        onClick={() => setShowForm(true)}
+                        className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium"
                     >
-                        {showForm ? <><X size={20} /> Cancel</> : <><Plus size={20} /> Log Transaction</>}
+                        <Plus size={20} /> Log Transaction
                     </button>
                 </div>
             </header>
@@ -159,7 +154,6 @@ export default function Expenses() {
                     </div>
                 </div>
 
-                {/* Progress Bar */}
                 <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
                     <div
                         className={clsx(
@@ -178,6 +172,18 @@ export default function Expenses() {
                 </div>
             </div>
 
+            {/* Transaction Modal */}
+            <Modal
+                isOpen={showForm}
+                onClose={() => setShowForm(false)}
+                title="Log Transaction"
+            >
+                <ExpenseForm onExpenseAdded={() => {
+                    setShowForm(false);
+                    fetchData();
+                }} />
+            </Modal>
+
             {/* Category Manager Modal */}
             <Modal
                 isOpen={showCategoryManager}
@@ -189,16 +195,6 @@ export default function Expenses() {
                     onUpdate={fetchData}
                 />
             </Modal>
-
-            {/* Expense Form Section */}
-            {showForm && (
-                <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-                    <ExpenseForm onExpenseAdded={() => {
-                        setShowForm(false);
-                        fetchData();
-                    }} />
-                </div>
-            )}
 
             {/* Budget Categories */}
             {loading ? (
@@ -239,7 +235,6 @@ export default function Expenses() {
                                     </p>
                                 </div>
 
-                                {/* Progress Bar */}
                                 <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
                                     <div
                                         className={clsx(
@@ -260,4 +255,3 @@ export default function Expenses() {
         </div>
     );
 }
-
