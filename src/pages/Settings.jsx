@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Save, Loader2, Shield, Eye, EyeOff, Calendar } from 'lucide-react';
+import { Lock, Save, Loader2, Shield, Eye, EyeOff, Calendar, AlertTriangle } from 'lucide-react';
 import { settingsService } from '../services/settings';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import clsx from 'clsx';
 
 export default function Settings() {
@@ -293,6 +295,127 @@ export default function Settings() {
                     )}
                 </div>
             </div>
+
+            {/* Danger Zone */}
+            <div className="glass-card border-rose-500/20">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-rose-500/20 text-rose-400 rounded-lg">
+                        <AlertTriangle size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-white">Danger Zone</h3>
+                        <p className="text-slate-400 text-sm">Irreversible actions</p>
+                    </div>
+                </div>
+
+                <DeleteAccountSection />
+            </div>
+        </div>
+    );
+}
+
+function DeleteAccountSection() {
+    const [isOpen, setIsOpen] = useState(false);
+    const [confirmText, setConfirmText] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const { deleteAccount, signIn, user } = useAuth();
+
+    const handleDelete = async (e) => {
+        e.preventDefault();
+        if (confirmText !== 'delete my account') return;
+
+        setLoading(true);
+        setError('');
+
+        try {
+            // Re-authenticate first
+            const { error: authError } = await signIn({ email: user.email, password });
+            if (authError) throw new Error('Incorrect password');
+
+            // Delete account
+            const { error: deleteError } = await deleteAccount();
+            if (deleteError) throw deleteError;
+
+            // Clean session and redirect to registration
+            await supabase.auth.signOut();
+            window.location.href = '/register';
+        } catch (error) {
+            setError(error.message);
+            setLoading(false);
+        }
+    };
+
+    if (!isOpen) {
+        return (
+            <button
+                onClick={() => setIsOpen(true)}
+                className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2 border border-rose-500/20"
+            >
+                Delete Account
+            </button>
+        );
+    }
+
+    return (
+        <div className="bg-rose-500/5 rounded-lg p-4 border border-rose-500/20">
+            <h4 className="text-lg font-bold text-white mb-2">Delete Account</h4>
+            <p className="text-slate-300 text-sm mb-4">
+                This action is <span className="font-bold text-rose-400">irreversible</span>.
+                All your data (transactions, categories, investments, settings) will be permanently deleted.
+            </p>
+
+            <form onSubmit={handleDelete} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">
+                        Type <span className="font-mono text-white">delete my account</span> to confirm
+                    </label>
+                    <input
+                        type="text"
+                        value={confirmText}
+                        onChange={(e) => setConfirmText(e.target.value)}
+                        className="w-full bg-slate-900/50 border border-white/10 rounded-lg py-2 px-4 text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        placeholder="delete my account"
+                        required
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">
+                        Confirm Password
+                    </label>
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full bg-slate-900/50 border border-white/10 rounded-lg py-2 px-4 text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        placeholder="••••••••"
+                        required
+                    />
+                </div>
+
+                {error && (
+                    <div className="text-rose-400 text-sm">{error}</div>
+                )}
+
+                <div className="flex gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setIsOpen(false)}
+                        className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={loading || confirmText !== 'delete my account'}
+                        className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-medium py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {loading ? <Loader2 className="animate-spin" size={18} /> : 'Delete Forever'}
+                    </button>
+                </div>
+            </form>
         </div>
     );
 }
