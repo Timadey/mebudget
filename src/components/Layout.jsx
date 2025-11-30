@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PieChart, TrendingUp, Settings, Menu, X } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, PieChart, TrendingUp, Settings, Menu, X, LogOut } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuth } from '../context/AuthContext';
 
 const NavItem = ({ to, icon: Icon, label, onClick }) => {
     const location = useLocation();
@@ -26,6 +27,13 @@ const NavItem = ({ to, icon: Icon, label, onClick }) => {
 
 export default function Layout({ children }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const { user, signOut } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        await signOut();
+        navigate('/login');
+    };
 
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -33,6 +41,27 @@ export default function Layout({ children }) {
         { to: '/investments', icon: TrendingUp, label: 'Investments' },
         { to: '/settings', icon: Settings, label: 'Settings' }
     ];
+
+    const UserProfile = () => (
+        <div className="mt-auto pt-6 border-t border-white/5">
+            <div className="flex items-center gap-3 px-2 mb-4">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/50 to-secondary/50 flex items-center justify-center text-xs font-bold text-white">
+                    {user?.email?.substring(0, 2).toUpperCase() || 'US'}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">User</p>
+                    <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+                </div>
+            </div>
+            <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10 transition-colors text-sm font-medium"
+            >
+                <LogOut size={18} />
+                Sign Out
+            </button>
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-dark-900 text-slate-50 flex">
@@ -53,15 +82,7 @@ export default function Layout({ children }) {
                     ))}
                 </nav>
 
-                <div className="mt-auto pt-6 border-t border-white/5">
-                    <div className="flex items-center gap-3 px-2">
-                        <div className="w-8 h-8 rounded-full bg-slate-700" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">User</p>
-                            <p className="text-xs text-slate-400 truncate">user@example.com</p>
-                        </div>
-                    </div>
-                </div>
+                <UserProfile />
             </aside>
 
             {/* Mobile Header */}
@@ -96,15 +117,7 @@ export default function Layout({ children }) {
                             ))}
                         </nav>
 
-                        <div className="mt-auto pt-6 border-t border-white/5">
-                            <div className="flex items-center gap-3 px-2">
-                                <div className="w-8 h-8 rounded-full bg-slate-700" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-white truncate">User</p>
-                                    <p className="text-xs text-slate-400 truncate">user@example.com</p>
-                                </div>
-                            </div>
-                        </div>
+                        <UserProfile />
                     </aside>
                 </>
             )}

@@ -37,9 +37,17 @@ export const settingsService = {
         try {
             const stringValue = valueType === 'json' ? JSON.stringify(value) : String(value);
 
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user logged in');
+
             const { error } = await supabase
                 .from('settings')
-                .upsert({ key, value: stringValue, value_type: valueType }, { onConflict: 'key' });
+                .upsert({
+                    user_id: user.id,
+                    key,
+                    value: stringValue,
+                    value_type: valueType
+                }, { onConflict: 'user_id, key' });
 
             if (error) throw error;
             return true;
