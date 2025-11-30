@@ -46,11 +46,11 @@ const PAYMENT_APPS = [
     }
 ];
 
-export default function ExpenseForm({ onExpenseAdded }) {
+export default function ExpenseForm({ onExpenseAdded, initialType = 'Expense', initialCategory = '' }) {
     const [allCategories, setAllCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [type, setType] = useState('Expense');
+    const [type, setType] = useState(initialType);
     const [selectedPaymentApp, setSelectedPaymentApp] = useState(null);
 
     const [formData, setFormData] = useState({
@@ -66,12 +66,18 @@ export default function ExpenseForm({ onExpenseAdded }) {
 
     useEffect(() => {
         const availableCategories = allCategories.filter(c => c.type === type);
-        if (availableCategories.length > 0) {
+
+        // If initialCategory is provided and matches current type, use it
+        if (initialCategory && availableCategories.find(c => c.name === initialCategory)) {
+            setFormData(prev => ({ ...prev, category: initialCategory }));
+        }
+        // Otherwise default to first available
+        else if (availableCategories.length > 0) {
             setFormData(prev => ({ ...prev, category: availableCategories[0].name }));
         } else {
             setFormData(prev => ({ ...prev, category: '' }));
         }
-    }, [type, allCategories]);
+    }, [type, allCategories, initialCategory]);
 
     const loadCategories = async () => {
         setLoading(true);
@@ -134,15 +140,15 @@ export default function ExpenseForm({ onExpenseAdded }) {
 
     return (
         <div className="glass-card">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h3 className="text-xl font-bold text-white">Log Transaction</h3>
 
-                <div className="flex bg-slate-800 p-1 rounded-lg">
+                <div className="flex bg-slate-800 p-1 rounded-lg w-full sm:w-auto">
                     <button
                         type="button"
                         onClick={() => setType('Expense')}
                         className={clsx(
-                            "px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2",
+                            "flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2",
                             type === 'Expense' ? "bg-rose-500 text-white shadow-lg" : "text-slate-400 hover:text-white"
                         )}
                     >
@@ -153,7 +159,7 @@ export default function ExpenseForm({ onExpenseAdded }) {
                         type="button"
                         onClick={() => setType('Income')}
                         className={clsx(
-                            "px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2",
+                            "flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2",
                             type === 'Income' ? "bg-emerald-500 text-white shadow-lg" : "text-slate-400 hover:text-white"
                         )}
                     >
@@ -259,7 +265,7 @@ export default function ExpenseForm({ onExpenseAdded }) {
                                 ))}
                             </div>
                             {selectedPaymentApp && (
-                                <p className="text-xs text-slate-500 mt-2">
+                                <p className="text-xs text-slate-200 mt-2">
                                     ℹ️ {PAYMENT_APPS.find(a => a.id === selectedPaymentApp)?.name} will open after logging
                                 </p>
                             )}

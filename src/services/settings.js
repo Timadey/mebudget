@@ -2,100 +2,115 @@ import { supabase } from '../lib/supabase';
 import bcrypt from 'bcryptjs';
 
 export const settingsService = {
-    // Get a setting by key
-    getSetting: async (key) => {
+    // Get all settings for the current user
+    getSettings: async () => {
         try {
             const { data, error } = await supabase
                 .from('settings')
                 .select('*')
-                .eq('key', key)
                 .single();
 
-            if (error) throw error;
-
-            // Parse value based on type
-            if (!data) return null;
-
-            switch (data.value_type) {
-                case 'boolean':
-                    return data.value === 'true';
-                case 'number':
-                    return Number(data.value);
-                case 'json':
-                    return JSON.parse(data.value);
-                default:
-                    return data.value;
+            if (error) {
+                // If row doesn't exist (e.g. old user before trigger), try to create it or return defaults
+                if (error.code === 'PGRST116') {
+                    return await settingsService.initializeSettings();
+                }
+                throw error;
             }
+            return data;
         } catch (error) {
-            console.error('Error getting setting:', error);
+            console.error('Error getting settings:', error);
             return null;
         }
     },
 
-    // Set a setting
-    setSetting: async (key, value, valueType = 'string') => {
-        try {
-            const stringValue = valueType === 'json' ? JSON.stringify(value) : String(value);
+    // Initialize settings if missing (fallback)
+    initializeSettings: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
 
+        const { data, error } = await supabase
+            .from('settings')
+            .insert({ user_id: user.id })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error initializing settings:', error);
+            return null;
+        }
+        return data;
+    },
+
+    // Update a specific column
+    updateSetting: async (column, value) => {
+        try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('No user logged in');
 
             const { error } = await supabase
                 .from('settings')
-                .upsert({
-                    user_id: user.id,
-                    key,
-                    value: stringValue,
-                    value_type: valueType
-                }, { onConflict: 'user_id, key' });
+                .update({ [column]: value })
+                .eq('user_id', user.id);
 
             if (error) throw error;
             return true;
         } catch (error) {
-            console.error('Error setting setting:', error);
+            console.error(`Error updating ₦{column}:`, error);
             return false;
         }
     },
 
     // PIN-specific methods
     isPinEnabled: async () => {
-        return await settingsService.getSetting('pin_enabled');
+        const settings = await settingsService.getSettings();
+        return settings?.pin_enabled || false;
     },
 
     setPinEnabled: async (enabled) => {
-        return await settingsService.setSetting('pin_enabled', enabled, 'boolean');
+        return await settingsService.updateSetting('pin_enabled', enabled);
     },
 
     getPinHash: async () => {
-        return await settingsService.getSetting('pin_hash');
+        const settings = await settingsService.getSettings();
+        return settings?.pin_hash;
     },
 
     setPinHash: async (pin) => {
         const hash = await bcrypt.hash(pin, 10);
-        return await settingsService.setSetting('pin_hash', hash, 'string');
+        return await settingsService.updateSetting('pin_hash', hash);
     },
 
-    verifyPin: async (pin) => {
+    async verifyPin(pin) {
         const hash = await settingsService.getPinHash();
-        if (!hash) return false;
+        if (!hash) return true;
         return await bcrypt.compare(pin, hash);
+    },
+
+    async getOnboardingCompleted() {
+        const settings = await settingsService.getSettings();
+        return settings?.onboarding_completed || false;
+    },
+
+    async setOnboardingCompleted(completed) {
+        return await settingsService.updateSetting('onboarding_completed', completed);
     },
 
     updateLastVerified: async () => {
         const now = new Date().toISOString();
-        return await settingsService.setSetting('last_verified_at', now, 'string');
+        return await settingsService.updateSetting('last_verified_at', now);
     },
 
     getLastVerified: async () => {
-        const timestamp = await settingsService.getSetting('last_verified_at');
-        return timestamp ? new Date(timestamp) : null;
+        const settings = await settingsService.getSettings();
+        return settings?.last_verified_at ? new Date(settings.last_verified_at) : null;
     },
 
     needsVerification: async () => {
-        const enabled = await settingsService.isPinEnabled();
-        if (!enabled) return false;
+        const settings = await settingsService.getSettings();
+        if (!settings?.pin_enabled) return false;
 
-        const lastVerified = await settingsService.getLastVerified();
+        const lastVerified = settings.last_verified_at ? new Date(settings.last_verified_at) : null;
         if (!lastVerified) return true;
 
         const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
@@ -104,11 +119,11 @@ export const settingsService = {
 
     // Budget duration methods
     getBudgetDuration: async () => {
-        const duration = await settingsService.getSetting('budget_duration');
-        return duration || 'monthly';
+        const settings = await settingsService.getSettings();
+        return settings?.budget_duration || 'monthly';
     },
 
     setBudgetDuration: async (duration) => {
-        return await settingsService.setSetting('budget_duration', duration, 'string');
+        return await settingsService.updateSetting('budget_duration', duration);
     }
 };

@@ -13,6 +13,7 @@ export default function Expenses() {
     const [data, setData] = useState({ categories: [], transactions: [] });
     const [loading, setLoading] = useState(true);
     const [budgetDuration, setBudgetDuration] = useState('monthly');
+    const [selectedCategory, setSelectedCategory] = useState(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -31,6 +32,16 @@ export default function Expenses() {
     useEffect(() => {
         fetchData();
     }, []);
+
+    const handleCategoryClick = (categoryName) => {
+        setSelectedCategory(categoryName);
+        setShowForm(true);
+    };
+
+    const handleCloseForm = () => {
+        setShowForm(false);
+        setSelectedCategory(null);
+    };
 
     const expenseCategories = data.categories?.filter(c => c.type === 'Expense') || [];
 
@@ -88,17 +99,19 @@ export default function Expenses() {
                     <h2 className="text-3xl font-bold text-white">Expenses</h2>
                     <p className="text-slate-400">Manage your budget and track spending.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-3">
                     <button
                         onClick={() => setShowCategoryManager(true)}
-                        className="px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium bg-slate-700 hover:bg-slate-600 text-white"
+                        className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors font-medium w-full sm:w-auto"
                     >
-                        <Settings size={20} />
-                        Manage Categories
+                        <Settings size={20} /> Manage Categories
                     </button>
                     <button
-                        onClick={() => setShowForm(true)}
-                        className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium"
+                        onClick={() => {
+                            setSelectedCategory(null);
+                            setShowForm(true);
+                        }}
+                        className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors font-medium w-full sm:w-auto"
                     >
                         <Plus size={20} /> Log Transaction
                     </button>
@@ -175,13 +188,16 @@ export default function Expenses() {
             {/* Transaction Modal */}
             <Modal
                 isOpen={showForm}
-                onClose={() => setShowForm(false)}
+                onClose={handleCloseForm}
                 title="Log Transaction"
             >
-                <ExpenseForm onExpenseAdded={() => {
-                    setShowForm(false);
-                    fetchData();
-                }} />
+                <ExpenseForm
+                    onExpenseAdded={() => {
+                        handleCloseForm();
+                        fetchData();
+                    }}
+                    initialCategory={selectedCategory}
+                />
             </Modal>
 
             {/* Category Manager Modal */}
@@ -210,7 +226,11 @@ export default function Expenses() {
                         const remaining = limit - spent;
 
                         return (
-                            <div key={category.id} className="glass-card group hover:bg-white/15 transition-all">
+                            <div
+                                key={category.id}
+                                onClick={() => handleCategoryClick(category.name)}
+                                className="glass-card group hover:bg-white/15 transition-all cursor-pointer"
+                            >
                                 <div className="flex justify-between items-start mb-4">
                                     <div className={clsx(
                                         "p-2 rounded-lg transition-colors",
