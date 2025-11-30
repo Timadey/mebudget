@@ -12,25 +12,43 @@ import Dashboard from './pages/Dashboard';
 import Expenses from './pages/Expenses';
 import Investments from './pages/Investments';
 import Settings from './pages/Settings';
+import Landing from './pages/Landing';
+import Onboarding from './pages/Onboarding';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfUse from './pages/TermsOfUse';
+import InstallPrompt from './components/InstallPrompt';
 
 function AuthenticatedApp() {
   const { user, loading } = useAuth();
   const [isLocked, setIsLocked] = useState(true);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCheckingPin, setIsCheckingPin] = useState(true);
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(null);
 
   useEffect(() => {
     if (loading) return;
 
     if (user) {
       checkPinRequirement();
+      checkOnboardingStatus();
       // Check PIN requirement every minute
       const interval = setInterval(checkPinRequirement, 60000);
       return () => clearInterval(interval);
     } else {
       setIsCheckingPin(false);
+      setIsOnboardingCompleted(true); // Not relevant for logged out users
     }
   }, [user, loading]);
+
+  const checkOnboardingStatus = async () => {
+    try {
+      const completed = await settingsService.getOnboardingCompleted();
+      setIsOnboardingCompleted(completed);
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+      setIsOnboardingCompleted(false); // Default to false on error to be safe, or true to avoid blocking? False is safer for onboarding.
+    }
+  };
 
   const checkPinRequirement = async () => {
     try {
@@ -62,7 +80,7 @@ function AuthenticatedApp() {
     }
   };
 
-  if (loading || (user && isCheckingPin)) {
+  if (loading || (user && (isCheckingPin || isOnboardingCompleted === null))) {
     return (
       <div className="min-h-screen bg-dark-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
@@ -70,13 +88,32 @@ function AuthenticatedApp() {
     );
   }
 
+
+
+  // ... (imports)
+
+  // ... (AuthenticatedApp component)
+
   if (!user) {
     return (
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfUse />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
+  // If user is logged in but hasn't completed onboarding
+  if (!isOnboardingCompleted) {
+    return (
+      <Routes>
+        <Route path="/onboarding" element={<Onboarding onComplete={() => setIsOnboardingCompleted(true)} />} />
+        <Route path="*" element={<Navigate to="/onboarding" replace />} />
       </Routes>
     );
   }
@@ -101,6 +138,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <InstallPrompt />
         <AuthenticatedApp />
       </AuthProvider>
     </Router>
