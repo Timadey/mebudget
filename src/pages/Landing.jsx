@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Wallet, TrendingDown, Shield, CheckCircle2, AlertTriangle, TrendingUp, BarChart3, PieChart } from 'lucide-react';
+import clsx from 'clsx';
 
 export default function Landing() {
     return (
