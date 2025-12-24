@@ -11,10 +11,10 @@ import {
     ArrowDownCircle
 } from 'lucide-react';
 import clsx from 'clsx';
-import SpendingChart from '../components/analytics/SpendingChart';
-import CategoryBreakdown from '../components/analytics/CategoryBreakdown';
-import TrendAnalysis from '../components/analytics/TrendAnalysis';
-import ComparisonCard from '../components/analytics/ComparisonCard';
+import SpendingChart from '../components/SpendingChart.jsx';
+import CategoryBreakdown from '../components/Categorybreakdown.jsx';
+import TrendAnalysis from '../components/TrendAnalysis.jsx';
+import ComparisonCard from '../components/ComparisonCard.jsx';
 
 export default function Analytics() {
     const [data, setData] = useState({ categories: [], transactions: [] });
