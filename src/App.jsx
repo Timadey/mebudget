@@ -17,6 +17,7 @@ import Onboarding from './pages/Onboarding';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse from './pages/TermsOfUse';
 import InstallPrompt from './components/InstallPrompt';
+import Analytics from "./pages/Analytics.jsx";
 
 function AuthenticatedApp() {
   const { user, loading } = useAuth();
@@ -126,6 +127,7 @@ function AuthenticatedApp() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/investments" element={<Investments />} />
+          <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

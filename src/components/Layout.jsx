@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, PieChart, TrendingUp, Settings, Menu, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, PieChart, TrendingUp, Settings, Menu, X, LogOut, ChartArea } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
 
@@ -39,6 +39,7 @@ export default function Layout({ children }) {
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/expenses', icon: PieChart, label: 'Expenses' },
         { to: '/investments', icon: TrendingUp, label: 'Investments' },
+        { to: '/analytics', icon: ChartArea, label: 'Analytics' },
         { to: '/settings', icon: Settings, label: 'Settings' }
     ];
 

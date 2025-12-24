@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Wallet, TrendingDown, Shield, CheckCircle2, AlertTriangle, TrendingUp } from 'lucide-react';
-import clsx from 'clsx';
+import { ArrowRight, Wallet, TrendingDown, Shield, CheckCircle2, AlertTriangle, TrendingUp, BarChart3, PieChart } from 'lucide-react';
 
 export default function Landing() {
     return (
@@ -49,7 +48,7 @@ export default function Landing() {
                         </span>
                     </h1>
                     <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-                        Track expenses, set budgets, and achieve your financial goals with a beautifully simple interface designed for modern life.
+                        Track expenses, set budgets, visualize spending patterns, and achieve your financial goals with powerful analytics and a beautifully simple interface.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
                         <Link
@@ -67,7 +66,7 @@ export default function Landing() {
                     </div>
                 </div>
 
-                {/* Mock Interface */}
+                {/* Mock Interface with Analytics */}
                 <div className="max-w-6xl mx-auto relative animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500">
                     <div className="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl opacity-20 blur-lg" />
                     <div className="relative bg-dark-800/80 backdrop-blur-xl border border-white/10 rounded-2xl p-4 md:p-8 shadow-2xl overflow-hidden">
@@ -87,7 +86,7 @@ export default function Landing() {
                         </div>
 
                         {/* Mock Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                             {/* Card 1: Total Balance */}
                             <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-xl p-6">
                                 <div className="flex items-center gap-3 mb-4">
@@ -118,27 +117,156 @@ export default function Landing() {
                                 <div className="mt-2 text-xs text-slate-400 text-right">65% of budget</div>
                             </div>
 
-                            {/* Card 3: Recent Activity */}
-                            <div className="bg-white/5 border border-white/10 rounded-xl p-6 flex flex-col justify-center gap-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center text-2xl">🍔</div>
-                                        <div>
-                                            <div className="font-medium">Lunch</div>
-                                            <div className="text-xs text-slate-400">Food & Drink</div>
-                                        </div>
+                            {/* Card 3: 7-Day Trend */}
+                            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400">
+                                        <BarChart3 size={20} />
                                     </div>
-                                    <span className="text-rose-400 font-medium">-₦4,500</span>
+                                    <span className="text-slate-300">7-Day Trend</span>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-2xl">🚕</div>
-                                        <div>
-                                            <div className="font-medium">Uber</div>
-                                            <div className="text-xs text-slate-400">Transport</div>
-                                        </div>
+                                <div className="flex items-end justify-between gap-1 h-16 mb-2">
+                                    {[30, 45, 60, 40, 70, 55, 80].map((height, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex-1 bg-gradient-to-t from-purple-500 to-purple-400 rounded-t"
+                                            style={{ height: `${height}%` }}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="text-xs text-slate-400 text-center">Daily spending pattern</div>
+                            </div>
+                        </div>
+
+                        {/* Analytics Preview Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Donut Chart Preview */}
+                            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="p-1.5 bg-blue-500/20 rounded-lg text-blue-400">
+                                        <PieChart size={16} />
                                     </div>
-                                    <span className="text-rose-400 font-medium">-₦2,300</span>
+                                    <span className="text-sm font-medium text-white">Category Breakdown</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="relative w-24 h-24">
+                                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                                            <circle cx="50" cy="50" r="35" fill="none" stroke="#ef4444" strokeWidth="14" strokeDasharray="70 220" strokeDashoffset="0" />
+                                            <circle cx="50" cy="50" r="35" fill="none" stroke="#f59e0b" strokeWidth="14" strokeDasharray="50 220" strokeDashoffset="-70" />
+                                            <circle cx="50" cy="50" r="35" fill="none" stroke="#10b981" strokeWidth="14" strokeDasharray="45 220" strokeDashoffset="-120" />
+                                            <circle cx="50" cy="50" r="35" fill="none" stroke="#3b82f6" strokeWidth="14" strokeDasharray="55 220" strokeDashoffset="-165" />
+                                            <circle cx="50" cy="50" r="25" fill="rgb(15, 23, 42)" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1 space-y-2">
+                                        {[
+                                            { color: 'bg-rose-500', name: 'Food', amount: '42%' },
+                                            { color: 'bg-amber-500', name: 'Transport', amount: '23%' },
+                                            { color: 'bg-emerald-500', name: 'Bills', amount: '20%' },
+                                            { color: 'bg-blue-500', name: 'Other', amount: '15%' }
+                                        ].map((cat, i) => (
+                                            <div key={i} className="flex items-center gap-2 text-xs">
+                                                <div className={`w-2 h-2 rounded-full ${cat.color}`} />
+                                                <span className="text-slate-400">{cat.name}</span>
+                                                <span className="ml-auto text-white font-medium">{cat.amount}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Top Spending Categories */}
+                            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-sm font-medium text-white">Top Spending</span>
+                                </div>
+                                <div className="space-y-3">
+                                    {[
+                                        { icon: '🍔', name: 'Food & Drink', amount: 78500, color: 'from-rose-500 to-pink-500' },
+                                        { icon: '🚕', name: 'Transport', amount: 42300, color: 'from-amber-500 to-orange-500' },
+                                        { icon: '💡', name: 'Utilities', amount: 37000, color: 'from-blue-500 to-cyan-500' }
+                                    ].map((cat, i) => (
+                                        <div key={i} className="space-y-1">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <span>{cat.icon}</span>
+                                                    <span className="text-slate-300">{cat.name}</span>
+                                                </div>
+                                                <span className="text-white font-medium">₦{cat.amount.toLocaleString()}</span>
+                                            </div>
+                                            <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                                <div className={`h-full bg-gradient-to-r ${cat.color} rounded-full`} style={{ width: `${85 - (i * 15)}%` }} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Feature 0: Advanced Analytics - NEW */}
+            <section className="py-24 px-6">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16">
+                    <div className="flex-1 space-y-6">
+                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center text-purple-400 mb-4">
+                            <BarChart3 size={32} />
+                        </div>
+                        <h2 className="text-3xl md:text-4xl font-bold">Powerful Analytics Dashboard</h2>
+                        <p className="text-xl text-slate-400 leading-relaxed">
+                            Understand your spending like never before. Visualize patterns, compare periods, and make data-driven decisions with beautiful charts and insights.
+                        </p>
+                        <ul className="space-y-4 pt-4">
+                            {[
+                                'Interactive donut charts showing category breakdown',
+                                '7-day and monthly spending trend analysis',
+                                'Month-over-month comparisons with percentage changes',
+                                'Top spending categories with visual progress bars',
+                                'Real-time filtering by date, category, and transaction type'
+                            ].map((item, i) => (
+                                <li key={i} className="flex items-center gap-3 text-slate-300">
+                                    <CheckCircle2 className="text-purple-400" size={20} />
+                                    {item}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div className="flex-1 w-full relative">
+                        <div className="absolute -inset-4 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-full blur-3xl opacity-20" />
+                        <div className="relative bg-dark-900 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+                            {/* Mini Bar Chart */}
+                            <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                <div className="text-sm font-medium mb-3 flex items-center justify-between">
+                                    <span className="text-slate-300">Spending Over Time</span>
+                                    <span className="text-xs text-emerald-400">↓ -8%</span>
+                                </div>
+                                <div className="flex items-end gap-2 h-24">
+                                    {[60, 75, 45, 85, 65, 70, 55, 80, 60, 70].map((h, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex-1 bg-gradient-to-t from-primary to-secondary rounded-t hover:opacity-80 transition-opacity"
+                                            style={{ height: `${h}%` }}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="flex justify-between text-xs text-slate-500 mt-2">
+                                    <span>Jan</span>
+                                    <span>Dec</span>
+                                </div>
+                            </div>
+
+                            {/* Comparison Cards */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl">
+                                    <div className="text-xs text-slate-400 mb-1">This Month</div>
+                                    <div className="text-xl font-bold text-white">₦152k</div>
+                                    <div className="text-xs text-emerald-400 mt-1">↓ 12% vs last</div>
+                                </div>
+                                <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl">
+                                    <div className="text-xs text-slate-400 mb-1">Avg Transaction</div>
+                                    <div className="text-xl font-bold text-white">₦4.2k</div>
+                                    <div className="text-xs text-blue-400 mt-1">158 transactions</div>
                                 </div>
                             </div>
                         </div>
@@ -148,7 +276,7 @@ export default function Landing() {
 
             {/* Feature 1: Smart Budgeting */}
             <section className="py-24 px-6 bg-dark-800/50">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row-reverse items-center gap-16">
                     <div className="flex-1 space-y-6">
                         <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center text-primary mb-4">
                             <Wallet size={32} />
@@ -216,7 +344,7 @@ export default function Landing() {
 
             {/* Feature 2: Seamless Banking */}
             <section className="py-24 px-6">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row-reverse items-center gap-16">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16">
                     <div className="flex-1 space-y-6">
                         <div className="w-14 h-14 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-500 mb-4">
                             <TrendingDown size={32} />
@@ -265,7 +393,7 @@ export default function Landing() {
 
             {/* Feature 3: Investment Tracking */}
             <section className="py-24 px-6 bg-dark-800/50">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row-reverse items-center gap-16">
                     <div className="flex-1 space-y-6">
                         <div className="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-500 mb-4">
                             <TrendingUp size={32} />
@@ -334,7 +462,7 @@ export default function Landing() {
                     <div className="absolute top-0 left-0 w-full h-full bg-noise opacity-10" />
                     <h2 className="text-3xl md:text-5xl font-bold mb-6 relative z-10">Ready to take control?</h2>
                     <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto relative z-10">
-                        Join thousands of users who are mastering their finances with MeBudget.
+                        Join thousands of users who are mastering their finances with MeBudget's powerful analytics and intuitive tools.
                     </p>
                     <Link
                         to="/register"
@@ -353,18 +481,6 @@ export default function Landing() {
                 </div>
                 <p>&copy; {new Date().getFullYear()} MeBudget. All rights reserved.</p>
             </footer>
-        </div>
-    );
-}
-
-function FeatureCard({ icon, title, description }) {
-    return (
-        <div className="bg-white/5 border border-white/10 p-8 rounded-2xl hover:bg-white/10 transition-colors">
-            <div className="w-14 h-14 rounded-xl bg-dark-900 flex items-center justify-center mb-6 shadow-lg">
-                {icon}
-            </div>
-            <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
-            <p className="text-slate-400 leading-relaxed">{description}</p>
         </div>
     );
 }
