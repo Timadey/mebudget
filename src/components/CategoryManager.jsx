@@ -3,10 +3,11 @@ import { api } from '../services/api';
 import { Trash2, Edit2, Plus, Save, X, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
-export default function CategoryManager({ categories, onUpdate }) {
+export default function CategoryManager({ categories, onUpdate, currentPeriod }) {
     const [editingId, setEditingId] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [applyToPeriod, setApplyToPeriod] = useState(true);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -20,17 +21,21 @@ export default function CategoryManager({ categories, onUpdate }) {
         setFormData({ name: '', type: 'Expense', budgetLimit: 0, icon: '🏷️' });
         setEditingId(null);
         setIsCreating(false);
+        setApplyToPeriod(true);
     };
 
     const handleEdit = (category) => {
         setFormData({
             name: category.name,
             type: category.type,
-            budgetLimit: category.budgetlimit || 0,
+            budgetLimit: category.budgetlimit || 0, // This is the effective limit for the context
             icon: category.icon || '🏷️'
         });
         setEditingId(category.id);
         setIsCreating(false);
+        // Default to applying to period if we have one, but maybe check if it differs from default?
+        // Simplicity: default to true.
+        setApplyToPeriod(!!currentPeriod);
     };
 
     const handleDelete = async (id) => {
@@ -50,19 +55,72 @@ export default function CategoryManager({ categories, onUpdate }) {
         e.preventDefault();
         setLoading(true);
         try {
+            let catId = editingId;
+
+            // 1. Create or Update Category (Global Properties)
+            const globalUpdates = {
+                name: formData.name,
+                type: formData.type,
+                icon: formData.icon,
+                // If NOT applying to period (i.e., setting default), we update budget_limit here
+                budgetLimit: !applyToPeriod ? formData.budgetLimit : undefined
+            };
+
+            const cleanUpdates = Object.fromEntries(
+                Object.entries(globalUpdates).filter(([_, v]) => v !== undefined)
+            );
+
             if (isCreating) {
-                await api.createCategory(formData);
+                // When creating, we always set the default limit first
+                const { data } = await api.createCategory({
+                    ...formData,
+                    budgetLimit: formData.budgetLimit // Initial default
+                });
+                if (data && data[0]) catId = data[0].id;
             } else if (editingId) {
-                await api.updateCategory(editingId, formData);
+                // If applying to period, we DON'T update the default limit in the category definition
+                // If NOT applying to period, we DO update it.
+                // But wait, we always need to update name/icon etc.
+                if (!applyToPeriod) {
+                    await api.updateCategory(editingId, {
+                        ...formData,
+                        budgetLimit: formData.budgetLimit
+                    });
+                } else {
+                    // Only update name/icon/type
+                    await api.updateCategory(editingId, {
+                        name: formData.name,
+                        type: formData.type,
+                        icon: formData.icon
+                    });
+                }
             }
+
+            // 2. Set Period Budget if applicable
+            if (applyToPeriod && currentPeriod && catId && formData.type === 'Expense') {
+                await api.setBudget(
+                    catId,
+                    formData.budgetLimit,
+                    currentPeriod.start,
+                    currentPeriod.end
+                );
+            }
+
             onUpdate();
             resetForm();
         } catch (error) {
+            console.error(error);
             alert('Failed to save category');
         } finally {
             setLoading(false);
         }
     };
+
+    const formatDate = (date) => {
+        return new Date(date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+    };
+
+    const periodLabel = currentPeriod ? `${formatDate(currentPeriod.start)} - ${formatDate(currentPeriod.end)}` : 'Period';
 
     return (
         <div className="space-y-4">
@@ -106,7 +164,7 @@ export default function CategoryManager({ categories, onUpdate }) {
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs text-slate-400 block mb-1">Budget Limit</label>
+                            <label className="text-xs text-slate-400 block mb-1">Budget Limit (₦)</label>
                             <input
                                 type="number"
                                 value={formData.budgetLimit}
@@ -125,6 +183,23 @@ export default function CategoryManager({ categories, onUpdate }) {
                             />
                         </div>
                     </div>
+
+                    {/* Period Toggle */}
+                    {currentPeriod && !isCreating && formData.type === 'Expense' && (
+                        <div className="flex items-center gap-2 pt-1">
+                            <input
+                                type="checkbox"
+                                id="applyToPeriod"
+                                checked={applyToPeriod}
+                                onChange={(e) => setApplyToPeriod(e.target.checked)}
+                                className="rounded bg-slate-900 border-white/10 text-primary focus:ring-primary"
+                            />
+                            <label htmlFor="applyToPeriod" className="text-xs text-slate-300">
+                                Apply only to {periodLabel}
+                            </label>
+                        </div>
+                    )}
+
                     <div className="flex justify-end gap-2 pt-2">
                         <button
                             type="button"

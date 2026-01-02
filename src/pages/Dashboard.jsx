@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
+import { settingsService } from '../services/settings';
 import {
     Loader2,
     Plus,
@@ -13,17 +14,75 @@ import {
 } from 'lucide-react';
 import ExpenseForm from '../components/ExpenseForm';
 import Modal from '../components/Modal';
-// import CategoryBreakdown from '../components/analytics/CategoryBreakdown';
+import PeriodNavigator from '../components/PeriodNavigator';
 import clsx from 'clsx';
 
 export default function Dashboard() {
     const [data, setData] = useState({ categories: [], transactions: [], investments: [] });
     const [loading, setLoading] = useState(true);
     const [showTransactionModal, setShowTransactionModal] = useState(false);
+    const [currentPeriod, setCurrentPeriod] = useState({
+        start: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        end: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999)
+    });
+    const [budgetDuration, setBudgetDuration] = useState('monthly');
+
+    // Initialize period based on settings
+    useEffect(() => {
+        const init = async () => {
+            const duration = await settingsService.getBudgetDuration();
+            setBudgetDuration(duration);
+
+            const now = new Date(); // Current time for finding "current" period context
+            // But we construct boundaries in UTC
+            let start;
+            let end;
+
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            const currentDate = now.getDate();
+
+            if (duration === 'weekly') {
+                const day = now.getDay(); // 0 is Sunday
+                // Assume week starts Sunday
+                // UTC calculation for "beginning of current week" could be tricky if "now" is local.
+                // We likely want "The UTC day responding to today's Local Day".
+                // Let's rely on constructing UTC from the Local Year/Month/Date components.
+                const startOfTodayUTC = Date.UTC(currentYear, currentMonth, currentDate);
+                const dayOfWeek = now.getDay(); // Local day of week
+
+                const startTimestamp = startOfTodayUTC - (dayOfWeek * 86400000);
+                start = new Date(startTimestamp);
+                end = new Date(startTimestamp + (6 * 86400000));
+            } else if (duration === 'monthly') {
+                start = new Date(Date.UTC(currentYear, currentMonth, 1, 0, 0, 0));
+                end = new Date(Date.UTC(currentYear, currentMonth + 1, 0, 23, 59, 59, 999));
+            } else if (duration === 'yearly') {
+                start = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0));
+                end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59, 999));
+            } else {
+                // Default monthly fallback
+                start = new Date(Date.UTC(currentYear, currentMonth, 1, 0, 0, 0));
+                end = new Date(Date.UTC(currentYear, currentMonth + 1, 0, 23, 59, 59, 999));
+            }
+
+            // Ensure exact time components if weekly (the math above set them to 00:00:00 UTC for start)
+            if (duration === 'weekly') {
+                end.setUTCHours(23, 59, 59, 999);
+            }
+
+            setCurrentPeriod({ start, end });
+        };
+        init();
+    }, []);
 
     const fetchData = async () => {
         try {
-            const result = await api.getData();
+            setLoading(true);
+            const result = await api.getData({
+                startDate: currentPeriod.start,
+                endDate: currentPeriod.end
+            });
             setData(result);
         } catch (error) {
             console.error('Failed to fetch data', error);
@@ -34,7 +93,7 @@ export default function Dashboard() {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [currentPeriod]); // Re-fetch when period changes
 
     const totalExpenses = data.transactions
         ?.filter(t => t.type === 'Expense')
@@ -165,6 +224,13 @@ export default function Dashboard() {
                     <h2 className="text-3xl font-bold text-white">Dashboard</h2>
                     <p className="text-slate-400">Welcome back, here's your financial overview.</p>
                 </div>
+
+                <PeriodNavigator
+                    period={currentPeriod}
+                    onPeriodChange={setCurrentPeriod}
+                    duration={budgetDuration}
+                />
+
                 <button
                     onClick={() => setShowTransactionModal(true)}
                     className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors font-medium w-full sm:w-auto"

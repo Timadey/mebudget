@@ -2,28 +2,82 @@ import { supabase } from '../lib/supabase';
 
 export const api = {
     // Fetch all data
-    getData: async () => {
+    // Fetch all data with improved context awareness
+    getData: async ({ startDate, endDate } = {}) => {
         try {
-            const [categoriesRes, transactionsRes, investmentsRes] = await Promise.all([
+            // Build queries
+            let transactionsQuery = supabase
+                .from('transactions')
+                .select('*')
+                .order('date', { ascending: false });
+
+            // Fetch budgets if we have a date range
+            let budgetsQuery = supabase.from('budgets').select('*');
+
+            if (startDate && endDate) {
+                transactionsQuery = transactionsQuery
+                    .gte('date', startDate.toISOString())
+                    .lte('date', endDate.toISOString());
+
+                // Fetch budgets that overlap with the period
+                // Logic: budget_start <= period_end AND budget_end >= period_start
+                budgetsQuery = budgetsQuery
+                    .lte('start_date', endDate.toISOString())
+                    .gte('end_date', startDate.toISOString())
+                    .order('created_at', { ascending: false }); // Prioritize newest
+            }
+
+            const [categoriesRes, transactionsRes, investmentsRes, budgetsRes] = await Promise.all([
                 supabase.from('categories').select('*'),
-                supabase.from('transactions').select('*').order('date', { ascending: false }),
-                supabase.from('investments').select('*')
+                transactionsQuery,
+                supabase.from('investments').select('*'),
+                budgetsQuery
             ]);
 
             if (categoriesRes.error) throw categoriesRes.error;
             if (transactionsRes.error) throw transactionsRes.error;
             if (investmentsRes.error) throw investmentsRes.error;
+            if (budgetsRes.error && budgetsRes.error.code !== '42P01') throw budgetsRes.error;
+
+            const budgets = budgetsRes.data || [];
 
             // Transform data to match the app's expected structure
-            // We need to calculate 'currentspent' for categories based on transactions
             const categories = categoriesRes.data.map(cat => {
                 const spent = transactionsRes.data
                     .filter(t => t.category === cat.name && t.type === 'Expense')
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 
+                let activeBudget = cat.budget_limit;
+
+                if (startDate && endDate) {
+                    // Find a budget that matches this period.
+                    // Due to timezone shifts or potential legacy data, we avoid strict equality.
+                    // We look for a budget that starts roughly when we expect (within 24 hours)
+                    // and ends roughly when we expect.
+                    const periodBudget = budgets.find(b => {
+                        if (b.category_id !== cat.id) return false;
+
+                        const bStart = new Date(b.start_date).getTime();
+                        const bEnd = new Date(b.end_date).getTime();
+                        const reqStart = startDate.getTime();
+                        const reqEnd = endDate.getTime();
+
+                        const startDiff = Math.abs(bStart - reqStart);
+                        const endDiff = Math.abs(bEnd - reqEnd);
+
+                        // Allow 24 hours of drift (86400000 ms)
+                        return startDiff < 86400000 && endDiff < 86400000;
+                    });
+
+                    if (periodBudget) {
+                        activeBudget = periodBudget.amount;
+                    }
+                }
+
                 return {
                     ...cat,
-                    budgetlimit: cat.budget_limit, // Map snake_case to app's expected key
+                    budgetlimit: activeBudget, // This is now context-aware
+                    defaultLimit: cat.budget_limit, // Keep original for reference
                     currentspent: spent
                 };
             });
@@ -53,7 +107,7 @@ export const api = {
             const { data, error } = await supabase
                 .from('transactions')
                 .insert([{
-                    date: new Date().toISOString(),
+                    date: expense.date || new Date().toISOString(), // Allow custom date
                     amount: expense.amount,
                     payee: expense.payee,
                     description: expense.description,
@@ -121,6 +175,44 @@ export const api = {
             return { status: 'success' };
         } catch (error) {
             console.error('Delete Category Error:', error);
+            throw error;
+        }
+    },
+
+    // --- Budgets (Period Specific) ---
+
+    setBudget: async (categoryId, amount, startDate, endDate) => {
+        try {
+            // Check if exists
+            const { data: existing } = await supabase
+                .from('budgets')
+                .select('id')
+                .eq('category_id', categoryId)
+                .eq('start_date', startDate.toISOString())
+                .eq('end_date', endDate.toISOString())
+                .single();
+
+            let result;
+            if (existing) {
+                result = await supabase
+                    .from('budgets')
+                    .update({ amount })
+                    .eq('id', existing.id);
+            } else {
+                result = await supabase
+                    .from('budgets')
+                    .insert({
+                        category_id: categoryId,
+                        amount,
+                        start_date: startDate.toISOString(),
+                        end_date: endDate.toISOString()
+                    });
+            }
+
+            if (result.error) throw result.error;
+            return { status: 'success' };
+        } catch (error) {
+            console.error('Set Budget Error:', error);
             throw error;
         }
     },

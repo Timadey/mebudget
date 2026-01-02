@@ -5,6 +5,7 @@ import { settingsService } from '../services/settings';
 import ExpenseForm from '../components/ExpenseForm';
 import CategoryManager from '../components/CategoryManager';
 import Modal from '../components/Modal';
+import PeriodNavigator from '../components/PeriodNavigator';
 import clsx from 'clsx';
 
 export default function Expenses() {
@@ -14,14 +15,58 @@ export default function Expenses() {
     const [loading, setLoading] = useState(true);
     const [budgetDuration, setBudgetDuration] = useState('monthly');
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [currentPeriod, setCurrentPeriod] = useState({
+        start: new Date(),
+        end: new Date()
+    });
+
+    // Initialize logic similar to Dashboard - could be custom hook but copying for speed
+    useEffect(() => {
+        const init = async () => {
+            const duration = await settingsService.getBudgetDuration();
+            setBudgetDuration(duration);
+
+            const now = new Date();
+            let start;
+            let end;
+
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            const currentDate = now.getDate();
+
+            if (duration === 'weekly') {
+                const startOfTodayUTC = Date.UTC(currentYear, currentMonth, currentDate);
+                const dayOfWeek = now.getDay();
+
+                const startTimestamp = startOfTodayUTC - (dayOfWeek * 86400000);
+                start = new Date(startTimestamp);
+                end = new Date(startTimestamp + (6 * 86400000));
+                end.setUTCHours(23, 59, 59, 999);
+            } else if (duration === 'monthly') {
+                start = new Date(Date.UTC(currentYear, currentMonth, 1, 0, 0, 0));
+                end = new Date(Date.UTC(currentYear, currentMonth + 1, 0, 23, 59, 59, 999));
+            } else if (duration === 'yearly') {
+                start = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0));
+                end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59, 999));
+            } else {
+                start = new Date(Date.UTC(currentYear, currentMonth, 1, 0, 0, 0));
+                end = new Date(Date.UTC(currentYear, currentMonth + 1, 0, 23, 59, 59, 999));
+            }
+
+            setCurrentPeriod({ start, end });
+        };
+        init();
+    }, []);
 
     const fetchData = async () => {
+        if (!currentPeriod.start) return; // Wait for init
         setLoading(true);
         try {
-            const result = await api.getData();
-            const duration = await settingsService.getBudgetDuration();
+            const result = await api.getData({
+                startDate: currentPeriod.start,
+                endDate: currentPeriod.end
+            });
             setData(result);
-            setBudgetDuration(duration);
         } catch (error) {
             console.error('Failed to fetch data', error);
         } finally {
@@ -31,7 +76,7 @@ export default function Expenses() {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [currentPeriod]);
 
     const handleCategoryClick = (categoryName) => {
         setSelectedCategory(categoryName);
@@ -45,61 +90,44 @@ export default function Expenses() {
 
     const expenseCategories = data.categories?.filter(c => c.type === 'Expense') || [];
 
-    const getDateRange = () => {
-        const now = new Date();
-        let startDate;
+    // Removed manual calculatePeriodSpent because api.getData now handles it contextually if we trust 'currentspent'
+    // But wait, 'currentspent' in api.js is calculated based on transactions in the period?
+    // Yes: "const spent = transactionsRes.data... reduce...". transactionsRes is filtered by date.
+    // So distinct manual calculation here might be redundant if we use category.currentspent.
+    // However, the summary card needs total spent.
 
-        switch (budgetDuration) {
-            case 'weekly':
-                startDate = new Date(now);
-                startDate.setDate(now.getDate() - now.getDay());
-                startDate.setHours(0, 0, 0, 0);
-                break;
-            case 'yearly':
-                startDate = new Date(now.getFullYear(), 0, 1);
-                break;
-            case 'monthly':
-            default:
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                break;
-        }
+    // We can sum up category.currentspent or transaction list.
+    // Transactions list returned by api.getData is ALREADY filtered by date.
+    // So we can just sum data.transactions.
 
-        return { startDate, endDate: now };
-    };
-
-    const calculatePeriodSpent = () => {
-        const { startDate } = getDateRange();
-        return data.transactions
-            ?.filter(t => {
-                if (t.type !== 'Expense') return false;
-                const transactionDate = new Date(t.date);
-                return transactionDate >= startDate;
-            })
-            .reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-    };
+    const periodSpent = data.transactions
+        ?.filter(t => t.type === 'Expense')
+        .reduce((sum, t) => sum + Number(t.amount), 0) || 0;
 
     const totalBudget = expenseCategories.reduce((sum, cat) => sum + Number(cat.budgetlimit || 0), 0);
-    const periodSpent = calculatePeriodSpent();
     const remaining = totalBudget - periodSpent;
     const budgetPercentage = totalBudget > 0 ? (periodSpent / totalBudget) * 100 : 0;
 
     const getDurationLabel = () => {
-        switch (budgetDuration) {
-            case 'weekly': return 'This Week';
-            case 'yearly': return 'This Year';
-            case 'monthly':
-            default: return 'This Month';
-        }
+        // We can just use the PeriodNavigator formatted string or generic
+        return "Current Period";
     };
 
     return (
         <div className="space-y-6">
-            <header className="flex items-center justify-between">
+            <header className="flex flex-col xl:flex-row items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold text-white">Expenses</h2>
                     <p className="text-slate-400">Manage your budget and track spending.</p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3">
+
+                <PeriodNavigator
+                    period={currentPeriod}
+                    onPeriodChange={setCurrentPeriod}
+                    duration={budgetDuration}
+                />
+
+                <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
                     <button
                         onClick={() => setShowCategoryManager(true)}
                         className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors font-medium w-full sm:w-auto"
@@ -209,6 +237,7 @@ export default function Expenses() {
                 <CategoryManager
                     categories={data.categories}
                     onUpdate={fetchData}
+                    currentPeriod={currentPeriod}
                 />
             </Modal>
 
