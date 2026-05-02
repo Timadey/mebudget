@@ -6,4 +6,5 @@
 /captures/
 /.kotlin/
 **/build/
+.gradle-user-home
 
