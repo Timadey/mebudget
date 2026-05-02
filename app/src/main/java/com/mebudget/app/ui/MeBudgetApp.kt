@@ -2,6 +2,7 @@ package com.mebudget.app.ui
 
 import android.app.Activity
 import android.content.ContextWrapper
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,11 +34,17 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.mebudget.app.data.BudgetDetail
 import com.mebudget.app.data.BudgetEntity
+import com.mebudget.app.data.BudgetInsightSummary
 import com.mebudget.app.data.BudgetSummary
+import com.mebudget.app.data.GlobalInsightSummary
+import com.mebudget.app.data.InsightObservation
 import com.mebudget.app.data.NegativeBalanceRule
+import com.mebudget.app.data.TransferPathHistoryInsight
 import com.mebudget.app.data.TransactionSummary
 import com.mebudget.app.data.TransactionType
+import com.mebudget.app.data.WalletHistoryInsight
 import com.mebudget.app.data.WalletSummary
+import com.mebudget.app.data.WalletBudgetInsight
 import com.mebudget.app.data.formatAmount
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -91,7 +98,8 @@ fun MeBudgetApp(viewModel: MeBudgetViewModel) {
         onAddTransfer = viewModel::addTransfer,
         onAddAdjustment = viewModel::addAdjustment,
         onUpdateTransaction = viewModel::updateTransaction,
-        onDeleteTransaction = viewModel::deleteTransaction
+        onDeleteTransaction = viewModel::deleteTransaction,
+        fetchWalletsForBudget = viewModel::fetchWalletsForBudget
     )
 }
 
@@ -99,9 +107,17 @@ private object MeBudgetRoute {
     const val budgets = "budgets"
     const val budget = "budget"
     const val wallet = "wallet"
+    const val insights = "insights"
+    const val globalInsights = "global-insights"
+    const val globalWallet = "global-wallet"
+    const val globalTransfer = "global-transfer"
 
     fun budget(budgetId: Long): String = "$budget/$budgetId"
     fun wallet(budgetId: Long, walletId: Long): String = "$budget/$budgetId/$wallet/$walletId"
+    fun budgetInsights(budgetId: Long): String = "$budget/$budgetId/$insights"
+    fun globalWallet(walletKey: String): String = "$globalInsights/$globalWallet/${Uri.encode(walletKey)}"
+    fun globalTransfer(sourceKey: String, destinationKey: String): String =
+        "$globalInsights/$globalTransfer/${Uri.encode(sourceKey)}/${Uri.encode(destinationKey)}"
 }
 
 @Composable
@@ -123,8 +139,10 @@ private fun MeBudgetRoot(
     onAddTransfer: (Long, TransferDraft) -> Unit,
     onAddAdjustment: (Long, AdjustmentDraft) -> Unit,
     onUpdateTransaction: (TransactionEditorState) -> Unit,
-    onDeleteTransaction: (Long) -> Unit
+    onDeleteTransaction: (Long) -> Unit,
+    fetchWalletsForBudget: (Long) -> kotlinx.coroutines.flow.Flow<List<com.mebudget.app.data.WalletEntity>>
 ) {
+    var showGlobalExpense by rememberSaveable { mutableStateOf(false) }
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -144,6 +162,9 @@ private fun MeBudgetRoot(
                 CenterAlignedTopAppBar(
                     title = { Text("MeBudget", style = MaterialTheme.typography.titleLarge) },
                     actions = {
+                        TextButton(onClick = { navController.navigate(MeBudgetRoute.globalInsights) }) {
+                            Text("Insights")
+                        }
                         PrivacyToggleButton(
                             privacyModeEnabled = uiState.privacyModeEnabled,
                             onTogglePrivacyMode = onTogglePrivacyMode
@@ -175,8 +196,66 @@ private fun MeBudgetRoot(
                         },
                         privacyModeEnabled = uiState.privacyModeEnabled,
                         onCreateBudget = onCreateBudget,
-                        onDuplicateBudget = onDuplicateBudget
+                        onDuplicateBudget = onDuplicateBudget,
+                        onAddGlobalExpense = { showGlobalExpense = true }
                     )
+                }
+
+                composable(MeBudgetRoute.globalInsights) {
+                    GlobalInsightsScreen(
+                        insights = uiState.globalInsights,
+                        privacyModeEnabled = uiState.privacyModeEnabled,
+                        onTogglePrivacyMode = onTogglePrivacyMode,
+                        onOpenWalletInsight = { walletKey ->
+                            navController.navigate(MeBudgetRoute.globalWallet(walletKey))
+                        },
+                        onOpenTransferInsight = { sourceKey, destinationKey ->
+                            navController.navigate(MeBudgetRoute.globalTransfer(sourceKey, destinationKey))
+                        },
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = "${MeBudgetRoute.globalInsights}/${MeBudgetRoute.globalWallet}/{walletKey}",
+                    arguments = listOf(navArgument("walletKey") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val walletKey = backStackEntry.arguments?.getString("walletKey") ?: return@composable
+                    val walletInsight = uiState.globalInsights?.walletPatterns?.firstOrNull { it.walletKey == walletKey }
+                    if (walletInsight != null) {
+                        WalletHistoryDetailScreen(
+                            insight = walletInsight,
+                            privacyModeEnabled = uiState.privacyModeEnabled,
+                            onTogglePrivacyMode = onTogglePrivacyMode,
+                            onBack = { navController.popBackStack() }
+                        )
+                    } else {
+                        LoadingState()
+                    }
+                }
+
+                composable(
+                    route = "${MeBudgetRoute.globalInsights}/${MeBudgetRoute.globalTransfer}/{sourceKey}/{destinationKey}",
+                    arguments = listOf(
+                        navArgument("sourceKey") { type = NavType.StringType },
+                        navArgument("destinationKey") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val sourceKey = backStackEntry.arguments?.getString("sourceKey") ?: return@composable
+                    val destinationKey = backStackEntry.arguments?.getString("destinationKey") ?: return@composable
+                    val transferInsight = uiState.globalInsights?.transferPatterns?.firstOrNull {
+                        it.sourceWalletKey == sourceKey && it.destinationWalletKey == destinationKey
+                    }
+                    if (transferInsight != null) {
+                        TransferPatternDetailScreen(
+                            insight = transferInsight,
+                            privacyModeEnabled = uiState.privacyModeEnabled,
+                            onTogglePrivacyMode = onTogglePrivacyMode,
+                            onBack = { navController.popBackStack() }
+                        )
+                    } else {
+                        LoadingState()
+                    }
                 }
 
                 composable(
@@ -197,6 +276,9 @@ private fun MeBudgetRoot(
                                 onCloseBudget()
                                 navController.popBackStack()
                             },
+                            onOpenInsights = {
+                                navController.navigate(MeBudgetRoute.budgetInsights(budgetId))
+                            },
                             onOpenWallet = { wallet ->
                                 navController.navigate(MeBudgetRoute.wallet(budgetId, wallet.id))
                             },
@@ -210,6 +292,27 @@ private fun MeBudgetRoot(
                             onAddAdjustment = onAddAdjustment,
                             onUpdateTransaction = onUpdateTransaction,
                             onDeleteTransaction = onDeleteTransaction
+                        )
+                    } else {
+                        LoadingState()
+                    }
+                }
+
+                composable(
+                    route = "${MeBudgetRoute.budget}/{budgetId}/${MeBudgetRoute.insights}",
+                    arguments = listOf(navArgument("budgetId") { type = NavType.LongType })
+                ) { backStackEntry ->
+                    val budgetId = backStackEntry.arguments?.getLong("budgetId") ?: return@composable
+                    LaunchedEffect(budgetId) {
+                        onOpenBudget(budgetId)
+                    }
+                    val detail = uiState.selectedBudgetDetail
+                    if (detail?.budget?.id == budgetId) {
+                        BudgetInsightsScreen(
+                            detail = detail,
+                            privacyModeEnabled = uiState.privacyModeEnabled,
+                            onTogglePrivacyMode = onTogglePrivacyMode,
+                            onBack = { navController.popBackStack() }
                         )
                     } else {
                         LoadingState()
@@ -252,6 +355,18 @@ private fun MeBudgetRoot(
                 }
             }
         }
+    }
+
+    if (showGlobalExpense) {
+        GlobalExpenseBottomSheet(
+            budgets = uiState.budgets,
+            fetchWallets = fetchWalletsForBudget,
+            onDismiss = { showGlobalExpense = false },
+            onSave = { budgetId, draft ->
+                onAddExpense(budgetId, draft)
+                showGlobalExpense = false
+            }
+        )
     }
 }
 
@@ -387,7 +502,8 @@ private fun BudgetsScreen(
     onOpenBudget: (Long) -> Unit,
     privacyModeEnabled: Boolean,
     onCreateBudget: (BudgetDraft) -> Unit,
-    onDuplicateBudget: (Long, String) -> Unit
+    onDuplicateBudget: (Long, String) -> Unit,
+    onAddGlobalExpense: () -> Unit
 ) {
     var showCreateOptions by rememberSaveable { mutableStateOf(false) }
     var showBlankBudgetDialog by rememberSaveable { mutableStateOf(false) }
@@ -410,11 +526,51 @@ private fun BudgetsScreen(
                 )
             }
 
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = if (budgets.isEmpty()) "Start here" else "Budgets",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (budgets.isEmpty()) {
+                                "Create a budget before logging expenses."
+                            } else {
+                                "Open a budget for context, or use quick expense below."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    FilledTonalButton(
+                        onClick = { showCreateOptions = true },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
+                        Text("New")
+                    }
+                }
+            }
+
             if (budgets.isEmpty()) {
                 item {
                     EmptyState(
                         title = "Start your financial journey",
-                        subtitle = "Create your first budget sheet to organize your spending and savings."
+                        subtitle = "Create your first budget sheet to organize your spending and savings.",
+                        actionLabel = "Create Budget",
+                        onAction = { showCreateOptions = true }
                     )
                 }
             } else {
@@ -429,15 +585,23 @@ private fun BudgetsScreen(
             }
         }
 
-        FloatingActionButton(
-            onClick = { showCreateOptions = true },
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(24.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Create Budget")
+            if (budgets.isNotEmpty()) {
+                ExtendedFloatingActionButton(
+                    text = { Text("Expense") },
+                    icon = { Icon(Icons.Default.Add, contentDescription = "Add Expense") },
+                    onClick = onAddGlobalExpense,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    expanded = true
+                )
+            }
         }
     }
 
@@ -487,7 +651,7 @@ private fun TotalSummarySection(totalBalance: Long, activeWallets: Int, privacyM
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = MaterialTheme.shapes.extraLarge
     ) {
         Column(
@@ -539,8 +703,7 @@ private fun BudgetSummaryCard(
             .clickable(onClick = onOpen),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
@@ -616,6 +779,7 @@ private fun BudgetDetailScreen(
     privacyModeEnabled: Boolean,
     onTogglePrivacyMode: () -> Unit,
     onBack: () -> Unit,
+    onOpenInsights: () -> Unit,
     onOpenWallet: (WalletSummary) -> Unit,
     onUpdateBudgetSettings: (BudgetEntity) -> Unit,
     onAddWallet: (Long, WalletDraft) -> Unit,
@@ -629,14 +793,12 @@ private fun BudgetDetailScreen(
     onDeleteTransaction: (Long) -> Unit
 ) {
     val activeWallets = detail.wallets.filterNot { it.archived }
-    val canAddExpense = activeWallets.isNotEmpty()
     val canAddTransfer = activeWallets.size > 1
     val canAddAdjustment = activeWallets.isNotEmpty()
     var inlineSpendWalletId by rememberSaveable(detail.budget.id) { mutableStateOf<Long?>(null) }
     var showArchived by rememberSaveable(detail.budget.id) { mutableStateOf(false) }
     var showWalletDialog by rememberSaveable { mutableStateOf(false) }
     var editingWallet by remember { mutableStateOf<WalletSummary?>(null) }
-    var expenseDraft by remember(detail.budget.id) { mutableStateOf<ExpenseDraft?>(null) }
     var showTransferDialog by rememberSaveable { mutableStateOf(false) }
     var showAdjustmentDialog by rememberSaveable { mutableStateOf(false) }
     var editingTransaction by remember { mutableStateOf<TransactionSummary?>(null) }
@@ -647,14 +809,13 @@ private fun BudgetDetailScreen(
         privacyModeEnabled = privacyModeEnabled,
         onTogglePrivacyMode = onTogglePrivacyMode,
         visibleWallets = detail.wallets.filter { showArchived || !it.archived },
-        canAddExpense = canAddExpense,
         canAddTransfer = canAddTransfer,
         canAddAdjustment = canAddAdjustment,
         showArchived = showArchived,
         onBack = onBack,
         onToggleArchived = { showArchived = it },
         onOpenSettings = { showBudgetSettings = true },
-        onQuickExpense = { expenseDraft = ExpenseDraft(walletId = activeWallets.firstOrNull()?.id) },
+        onOpenInsights = onOpenInsights,
         onQuickTransfer = { showTransferDialog = true },
         onQuickAdjustment = { showAdjustmentDialog = true },
         onAddWalletRequest = { showWalletDialog = true },
@@ -670,7 +831,6 @@ private fun BudgetDetailScreen(
             inlineSpendWalletId = null
         },
         onOpenWallet = onOpenWallet,
-        onSpendFromWallet = { expenseDraft = ExpenseDraft(walletId = it.id) },
         onEditWallet = { editingWallet = it },
         onArchiveWallet = { onArchiveWallet(it.id, !it.archived) },
         onMoveWalletUp = { onMoveWallet(it.id, -1) },
@@ -732,18 +892,6 @@ private fun BudgetDetailScreen(
         )
     }
 
-    expenseDraft?.let { initialDraft ->
-        ExpenseDialog(
-            wallets = activeWallets,
-            initial = initialDraft,
-            onDismiss = { expenseDraft = null },
-            onSave = {
-                onAddExpense(detail.budget.id, it)
-                expenseDraft = null
-            }
-        )
-    }
-
     if (showTransferDialog) {
         TransferDialog(
             wallets = activeWallets,
@@ -797,14 +945,13 @@ private fun BudgetOverviewScreen(
     privacyModeEnabled: Boolean,
     onTogglePrivacyMode: () -> Unit,
     visibleWallets: List<WalletSummary>,
-    canAddExpense: Boolean,
     canAddTransfer: Boolean,
     canAddAdjustment: Boolean,
     showArchived: Boolean,
     onBack: () -> Unit,
     onToggleArchived: (Boolean) -> Unit,
     onOpenSettings: () -> Unit,
-    onQuickExpense: () -> Unit,
+    onOpenInsights: () -> Unit,
     onQuickTransfer: () -> Unit,
     onQuickAdjustment: () -> Unit,
     onAddWalletRequest: () -> Unit,
@@ -812,7 +959,6 @@ private fun BudgetOverviewScreen(
     onInlineSpendToggle: (Long) -> Unit,
     onInlineSpendSave: (WalletSummary, String) -> Unit,
     onOpenWallet: (WalletSummary) -> Unit,
-    onSpendFromWallet: (WalletSummary) -> Unit,
     onEditWallet: (WalletSummary) -> Unit,
     onArchiveWallet: (WalletSummary) -> Unit,
     onMoveWalletUp: (WalletSummary) -> Unit,
@@ -820,7 +966,7 @@ private fun BudgetOverviewScreen(
     onEditTransaction: (TransactionSummary) -> Unit,
     onDeleteTransaction: (TransactionSummary) -> Unit
 ) {
-    val recentTransactions = detail.transactions.take(5)
+    val recentTransactions = detail.transactions.take(3)
 
     Scaffold(
         topBar = {
@@ -867,17 +1013,6 @@ private fun BudgetOverviewScreen(
             }
 
             item {
-                BudgetActionStrip(
-                    canAddExpense = canAddExpense,
-                    canAddTransfer = canAddTransfer,
-                    canAddAdjustment = canAddAdjustment,
-                    onQuickExpense = onQuickExpense,
-                    onQuickTransfer = onQuickTransfer,
-                    onQuickAdjustment = onQuickAdjustment
-                )
-            }
-
-            item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -890,17 +1025,19 @@ private fun BudgetOverviewScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Archived", style = MaterialTheme.typography.bodySmall)
-                        Switch(
-                            checked = showArchived,
-                            onCheckedChange = onToggleArchived,
-                            modifier = Modifier.scale(0.8f)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = showArchived,
+                            onClick = { onToggleArchived(!showArchived) },
+                            label = { Text(if (showArchived) "Archived visible" else "Archived hidden") }
                         )
                         FilledTonalButton(onClick = onAddWalletRequest) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                             Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-                            Text("Add")
+                            Text("Add Wallet")
                         }
                     }
                 }
@@ -936,6 +1073,15 @@ private fun BudgetOverviewScreen(
             }
 
             item {
+                BudgetActionStrip(
+                    canAddTransfer = canAddTransfer,
+                    canAddAdjustment = canAddAdjustment,
+                    onQuickTransfer = onQuickTransfer,
+                    onQuickAdjustment = onQuickAdjustment
+                )
+            }
+
+            item {
                 Text(
                     text = "Recent activity",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -961,6 +1107,14 @@ private fun BudgetOverviewScreen(
                     )
                 }
             }
+
+            item {
+                BudgetInsightSection(
+                    insights = detail.insights,
+                    privacyModeEnabled = privacyModeEnabled,
+                    onOpenInsights = onOpenInsights
+                )
+            }
         }
     }
 }
@@ -976,7 +1130,7 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.18f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = MaterialTheme.shapes.large
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1023,10 +1177,8 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
 
 @Composable
 private fun BudgetActionStrip(
-    canAddExpense: Boolean,
     canAddTransfer: Boolean,
     canAddAdjustment: Boolean,
-    onQuickExpense: () -> Unit,
     onQuickTransfer: () -> Unit,
     onQuickAdjustment: () -> Unit
 ) {
@@ -1050,14 +1202,967 @@ private fun BudgetActionStrip(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(onClick = onQuickExpense, enabled = canAddExpense, modifier = Modifier.weight(1f)) {
-                    Text("Spend")
+                FilledTonalButton(onClick = onQuickTransfer, enabled = canAddTransfer, modifier = Modifier.weight(1f)) {
+                    Text("Move Money")
                 }
-                OutlinedButton(onClick = onQuickTransfer, enabled = canAddTransfer, modifier = Modifier.weight(1f)) {
-                    Text("Move")
-                }
-                OutlinedButton(onClick = onQuickAdjustment, enabled = canAddAdjustment, modifier = Modifier.weight(1f)) {
+                FilledTonalButton(onClick = onQuickAdjustment, enabled = canAddAdjustment, modifier = Modifier.weight(1f)) {
                     Text("Adjust")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BudgetInsightSection(
+    insights: BudgetInsightSummary,
+    privacyModeEnabled: Boolean,
+    onOpenInsights: () -> Unit
+) {
+    val previewObservations = insights.observations.take(2)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Insights",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${insights.walletInsights.size} wallets reviewed",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(
+                    onClick = onOpenInsights,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text("View Budget Insights")
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                InsightMetricCard(
+                    title = "Most rescued",
+                    value = insights.mostRescuedWallet?.walletName ?: "None",
+                    supporting = insights.mostRescuedWallet?.let {
+                        "${maskedAmount(it.transferInTotal, privacyModeEnabled)} received"
+                    } ?: "No rescue transfers",
+                    modifier = Modifier.weight(1f)
+                )
+                InsightMetricCard(
+                    title = "Top donor",
+                    value = insights.topDonorWallet?.walletName ?: "None",
+                    supporting = insights.topDonorWallet?.let {
+                        "${maskedAmount(it.transferOutTotal, privacyModeEnabled)} moved out"
+                    } ?: "No donor wallet",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                InsightMetricCard(
+                    title = "Top transfer path",
+                    value = insights.topTransferPath?.let {
+                        "${it.sourceWalletName} -> ${it.destinationWalletName}"
+                    } ?: "None",
+                    supporting = insights.topTransferPath?.let {
+                        "${maskedAmount(it.totalAmount, privacyModeEnabled)} across ${it.transferCount} moves"
+                    } ?: "No transfers yet",
+                    modifier = Modifier.weight(1f)
+                )
+                InsightMetricCard(
+                    title = "Overspent wallets",
+                    value = insights.overspentWallets.size.toString(),
+                    supporting = if (insights.overspentWallets.isEmpty()) {
+                        "No negative balances"
+                    } else {
+                        insights.overspentWallets.joinToString(limit = 2) { it.walletName }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (previewObservations.isNotEmpty()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f))
+                ObservationList(observations = previewObservations)
+            }
+        }
+    }
+}
+
+@Composable
+private fun InsightMetricCard(
+    title: String,
+    value: String,
+    supporting: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f))
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = supporting,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ObservationList(observations: List<InsightObservation>) {
+    if (observations.isEmpty()) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        observations.forEach { observation ->
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = observation.title,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = observation.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WalletInsightRow(
+    insight: WalletBudgetInsight,
+    privacyModeEnabled: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = insight.walletName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = buildString {
+                    append("Spent ${maskedAmount(insight.spentTotal, privacyModeEnabled)}")
+                    if (insight.transferInTotal > 0) append(" • Rescue in ${maskedAmount(insight.transferInTotal, privacyModeEnabled)}")
+                    if (insight.transferOutTotal > 0) append(" • Donated ${maskedAmount(insight.transferOutTotal, privacyModeEnabled)}")
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        AssistChip(
+            onClick = {},
+            enabled = false,
+            label = {
+                Text(
+                    if (insight.overspent) "Negative end"
+                    else "End ${maskedAmount(insight.endingBalance, privacyModeEnabled)}"
+                )
+            },
+            colors = if (insight.overspent) {
+                AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    labelColor = MaterialTheme.colorScheme.onErrorContainer
+                )
+            } else {
+                AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    labelColor = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BudgetInsightsScreen(
+    detail: BudgetDetail,
+    privacyModeEnabled: Boolean,
+    onTogglePrivacyMode: () -> Unit,
+    onBack: () -> Unit
+) {
+    val insights = detail.insights
+
+    Scaffold(
+        topBar = {
+            MediumTopAppBar(
+                title = {
+                    Column {
+                        Text("Budget Insights", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            detail.budget.name,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    PrivacyToggleButton(
+                        privacyModeEnabled = privacyModeEnabled,
+                        onTogglePrivacyMode = onTogglePrivacyMode
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                BudgetInsightOverviewCard(
+                    insights = insights,
+                    privacyModeEnabled = privacyModeEnabled
+                )
+            }
+
+            item {
+                InsightDetailCard(
+                    title = "Key observations",
+                    subtitle = "A quick review of where this budget bent under pressure."
+                ) {
+                    if (insights.observations.isNotEmpty()) {
+                        ObservationList(observations = insights.observations)
+                    }
+                    InsightMetricCard(
+                        title = "Most rescued",
+                        value = insights.mostRescuedWallet?.walletName ?: "None",
+                        supporting = insights.mostRescuedWallet?.let {
+                            "${maskedAmount(it.transferInTotal, privacyModeEnabled)} received"
+                        } ?: "No rescue transfers"
+                    )
+                    InsightMetricCard(
+                        title = "Top donor",
+                        value = insights.topDonorWallet?.walletName ?: "None",
+                        supporting = insights.topDonorWallet?.let {
+                            "${maskedAmount(it.transferOutTotal, privacyModeEnabled)} moved out"
+                        } ?: "No donor wallet"
+                    )
+                    InsightMetricCard(
+                        title = "Top transfer path",
+                        value = insights.topTransferPath?.let {
+                            "${it.sourceWalletName} -> ${it.destinationWalletName}"
+                        } ?: "None",
+                        supporting = insights.topTransferPath?.let {
+                            "${maskedAmount(it.totalAmount, privacyModeEnabled)} across ${it.transferCount} moves"
+                        } ?: "No transfers yet"
+                    )
+                }
+            }
+
+            item {
+                InsightDetailCard(
+                    title = "Wallet breakdown",
+                    subtitle = "See how each wallet performed against the original plan."
+                ) {
+                    insights.walletInsights.forEach { walletInsight ->
+                        WalletBreakdownRow(
+                            insight = walletInsight,
+                            privacyModeEnabled = privacyModeEnabled
+                        )
+                    }
+                }
+            }
+
+            item {
+                InsightDetailCard(
+                    title = "Transfer paths",
+                    subtitle = "These show how money moved between wallets in this budget."
+                ) {
+                    if (insights.transferPaths.isEmpty()) {
+                        Text(
+                            text = "No transfer paths yet.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        insights.transferPaths.forEach { path ->
+                            TransferPathRow(
+                                sourceName = path.sourceWalletName,
+                                destinationName = path.destinationWalletName,
+                                supporting = "${maskedAmount(path.totalAmount, privacyModeEnabled)} across ${path.transferCount} moves"
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                InsightDetailCard(
+                    title = "Overspent wallets",
+                    subtitle = "Wallets that ended this budget below zero."
+                ) {
+                    if (insights.overspentWallets.isEmpty()) {
+                        Text(
+                            text = "No wallets ended negative.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        insights.overspentWallets.forEach { walletInsight ->
+                            TransferPathRow(
+                                sourceName = walletInsight.walletName,
+                                destinationName = "Negative ending",
+                                supporting = "Ended ${maskedAmount(walletInsight.endingBalance, privacyModeEnabled)}"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BudgetInsightOverviewCard(
+    insights: BudgetInsightSummary,
+    privacyModeEnabled: Boolean
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.18f)),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Overview",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                InsightMetricCard(
+                    title = "Planned",
+                    value = maskedAmount(insights.totalPlanned, privacyModeEnabled),
+                    supporting = "Original wallet allocations",
+                    modifier = Modifier.weight(1f)
+                )
+                InsightMetricCard(
+                    title = "Spent",
+                    value = maskedAmount(insights.totalSpent, privacyModeEnabled),
+                    supporting = "Expense transactions only",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                InsightMetricCard(
+                    title = "Transferred",
+                    value = maskedAmount(insights.totalTransferred, privacyModeEnabled),
+                    supporting = "Moved between wallets",
+                    modifier = Modifier.weight(1f)
+                )
+                InsightMetricCard(
+                    title = "Adjusted",
+                    value = maskedAmount(insights.totalAdjusted, privacyModeEnabled),
+                    supporting = "Manual corrections",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InsightDetailCard(
+    title: String,
+    subtitle: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+private fun WalletBreakdownRow(
+    insight: WalletBudgetInsight,
+    privacyModeEnabled: Boolean
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = insight.walletName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = if (insight.overspent) "Negative end" else "Stable end",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (insight.overspent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            text = "Planned ${maskedAmount(insight.plannedAmount, privacyModeEnabled)} • Spent ${maskedAmount(insight.spentTotal, privacyModeEnabled)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Rescue in ${maskedAmount(insight.transferInTotal, privacyModeEnabled)} • Donated ${maskedAmount(insight.transferOutTotal, privacyModeEnabled)} • Adjusted ${maskedAmount(insight.adjustmentTotal, privacyModeEnabled)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Ending ${maskedAmount(insight.endingBalance, privacyModeEnabled)} • ${insight.transactionCount} transactions",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+    }
+}
+
+@Composable
+private fun TransferPathRow(
+    sourceName: String,
+    destinationName: String,
+    supporting: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "$sourceName -> $destinationName",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = supporting,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GlobalInsightsScreen(
+    insights: GlobalInsightSummary?,
+    privacyModeEnabled: Boolean,
+    onTogglePrivacyMode: () -> Unit,
+    onOpenWalletInsight: (String) -> Unit,
+    onOpenTransferInsight: (String, String) -> Unit,
+    onBack: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            MediumTopAppBar(
+                title = {
+                    Column {
+                        Text("Insights", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            "Patterns across all budgets",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    PrivacyToggleButton(
+                        privacyModeEnabled = privacyModeEnabled,
+                        onTogglePrivacyMode = onTogglePrivacyMode
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        }
+    ) { padding ->
+        if (insights == null) {
+            LoadingState()
+            return@Scaffold
+        }
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                GlobalInsightSummaryCard(
+                    insights = insights,
+                    privacyModeEnabled = privacyModeEnabled
+                )
+            }
+
+            item {
+                InsightDetailCard(
+                    title = "Wallet patterns",
+                    subtitle = "These wallets reveal how your budget behaves over time."
+                ) {
+                    if (insights.walletPatterns.isEmpty()) {
+                        Text(
+                            text = "No wallet patterns yet.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        insights.walletPatterns.take(8).forEach { walletPattern ->
+                            WalletHistoryRow(
+                                insight = walletPattern,
+                                privacyModeEnabled = privacyModeEnabled,
+                                onOpen = { onOpenWalletInsight(walletPattern.walletKey) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                InsightDetailCard(
+                    title = "Transfer patterns",
+                    subtitle = "These wallet routes repeat across multiple budgets."
+                ) {
+                    if (insights.transferPatterns.isEmpty()) {
+                        Text(
+                            text = "No repeating transfer routes yet.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        insights.transferPatterns.take(8).forEach { transferPattern ->
+                            TransferPatternHistoryRow(
+                                insight = transferPattern,
+                                privacyModeEnabled = privacyModeEnabled,
+                                onOpen = {
+                                    onOpenTransferInsight(
+                                        transferPattern.sourceWalletKey,
+                                        transferPattern.destinationWalletKey
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GlobalInsightSummaryCard(
+    insights: GlobalInsightSummary,
+    privacyModeEnabled: Boolean
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.18f)),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Overview",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            if (insights.observations.isNotEmpty()) {
+                ObservationList(observations = insights.observations)
+            }
+            InsightMetricCard(
+                title = "Most underplanned wallet",
+                value = insights.mostUnderplannedWallet?.displayName ?: "None",
+                supporting = insights.mostUnderplannedWallet?.let {
+                    "Rescued ${it.rescueCount} times across ${it.budgetsAppearedIn} budgets"
+                } ?: "No repeated underplanning yet"
+            )
+            InsightMetricCard(
+                title = "Most frequent rescue wallet",
+                value = insights.mostFrequentRescueWallet?.displayName ?: "None",
+                supporting = insights.mostFrequentRescueWallet?.let {
+                    "${maskedAmount(it.totalTransferIn, privacyModeEnabled)} received across budgets"
+                } ?: "No rescue pattern yet"
+            )
+            InsightMetricCard(
+                title = "Top donor wallet",
+                value = insights.topDonorWallet?.displayName ?: "None",
+                supporting = insights.topDonorWallet?.let {
+                    "${maskedAmount(it.totalTransferOut, privacyModeEnabled)} donated across budgets"
+                } ?: "No donor pattern yet"
+            )
+            InsightMetricCard(
+                title = "Most volatile wallet",
+                value = insights.mostVolatileWallet?.displayName ?: "None",
+                supporting = insights.mostVolatileWallet?.let {
+                    "Average variance ${maskedAmount(it.averageVarianceFromPlan, privacyModeEnabled)}"
+                } ?: "No volatility pattern yet"
+            )
+            InsightMetricCard(
+                title = "Top repeated transfer path",
+                value = insights.topRepeatedTransferPath?.let {
+                    "${it.sourceDisplayName} -> ${it.destinationDisplayName}"
+                } ?: "None",
+                supporting = insights.topRepeatedTransferPath?.let {
+                    "${maskedAmount(it.totalAmount, privacyModeEnabled)} across ${it.budgetsAppearedIn} budgets"
+                } ?: "No repeated route yet"
+            )
+        }
+    }
+}
+
+@Composable
+private fun WalletHistoryRow(
+    insight: WalletHistoryInsight,
+    privacyModeEnabled: Boolean,
+    onOpen: () -> Unit
+) {
+    Column(
+        modifier = Modifier.clickable(onClick = onOpen),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = insight.displayName,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = "Appeared in ${insight.budgetsAppearedIn} budgets • Avg planned ${maskedAmount(insight.averagePlannedAmount, privacyModeEnabled)} • Avg spent ${maskedAmount(insight.averageSpentAmount, privacyModeEnabled)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Rescue ${insight.rescueCount} • Donor ${insight.donorCount} • Negative endings ${insight.negativeEndingCount}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+    }
+}
+
+@Composable
+private fun TransferPatternHistoryRow(
+    insight: TransferPathHistoryInsight,
+    privacyModeEnabled: Boolean,
+    onOpen: () -> Unit
+) {
+    Column(modifier = Modifier.clickable(onClick = onOpen)) {
+        TransferPathRow(
+            sourceName = insight.sourceDisplayName,
+            destinationName = insight.destinationDisplayName,
+            supporting = "${maskedAmount(insight.totalAmount, privacyModeEnabled)} across ${insight.budgetsAppearedIn} budgets and ${insight.transferCount} moves"
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WalletHistoryDetailScreen(
+    insight: WalletHistoryInsight,
+    privacyModeEnabled: Boolean,
+    onTogglePrivacyMode: () -> Unit,
+    onBack: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            MediumTopAppBar(
+                title = {
+                    Column {
+                        Text(insight.displayName, style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            "Wallet history",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    PrivacyToggleButton(
+                        privacyModeEnabled = privacyModeEnabled,
+                        onTogglePrivacyMode = onTogglePrivacyMode
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                InsightDetailCard(
+                    title = "Overview",
+                    subtitle = "How this wallet behaves across budgets."
+                ) {
+                    ObservationList(
+                        observations = buildList {
+                            if (insight.rescueCount > 0) add(
+                                InsightObservation(
+                                    title = "Rescue pattern",
+                                    message = "${insight.displayName} needed support in ${insight.rescueCount} budgets."
+                                )
+                            )
+                            if (insight.donorCount > 0) add(
+                                InsightObservation(
+                                    title = "Donor pattern",
+                                    message = "${insight.displayName} also funded other wallets in ${insight.donorCount} budgets."
+                                )
+                            )
+                            if (insight.volatilityScore > 0) add(
+                                InsightObservation(
+                                    title = "Variability",
+                                    message = "${insight.displayName} does not stay close to one stable pattern."
+                                )
+                            )
+                        }
+                    )
+                    InsightMetricCard(
+                        title = "Budgets appeared",
+                        value = insight.budgetsAppearedIn.toString(),
+                        supporting = "Tracked over time"
+                    )
+                    InsightMetricCard(
+                        title = "Average planned",
+                        value = maskedAmount(insight.averagePlannedAmount, privacyModeEnabled),
+                        supporting = "Typical allocation"
+                    )
+                    InsightMetricCard(
+                        title = "Average spent",
+                        value = maskedAmount(insight.averageSpentAmount, privacyModeEnabled),
+                        supporting = "Typical outflow"
+                    )
+                    InsightMetricCard(
+                        title = "Average ending",
+                        value = maskedAmount(insight.averageEndingBalance, privacyModeEnabled),
+                        supporting = "How much usually remains"
+                    )
+                }
+            }
+
+            item {
+                InsightDetailCard(
+                    title = "Pressure signals",
+                    subtitle = "These show whether the wallet is usually under strain or helping other wallets."
+                ) {
+                    TransferPathRow(
+                        sourceName = "Rescue received",
+                        destinationName = "${insight.rescueCount} budgets",
+                        supporting = maskedAmount(insight.totalTransferIn, privacyModeEnabled)
+                    )
+                    TransferPathRow(
+                        sourceName = "Donor behavior",
+                        destinationName = "${insight.donorCount} budgets",
+                        supporting = maskedAmount(insight.totalTransferOut, privacyModeEnabled)
+                    )
+                    TransferPathRow(
+                        sourceName = "Negative endings",
+                        destinationName = insight.negativeEndingCount.toString(),
+                        supporting = "Ended below zero this many times"
+                    )
+                    TransferPathRow(
+                        sourceName = "Volatility",
+                        destinationName = maskedAmount(insight.volatilityScore, privacyModeEnabled),
+                        supporting = "Average deviation from plan"
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TransferPatternDetailScreen(
+    insight: TransferPathHistoryInsight,
+    privacyModeEnabled: Boolean,
+    onTogglePrivacyMode: () -> Unit,
+    onBack: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            MediumTopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            "${insight.sourceDisplayName} -> ${insight.destinationDisplayName}",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Text(
+                            "Transfer path history",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    PrivacyToggleButton(
+                        privacyModeEnabled = privacyModeEnabled,
+                        onTogglePrivacyMode = onTogglePrivacyMode
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                InsightDetailCard(
+                    title = "Route summary",
+                    subtitle = "How this transfer route repeats across budgets."
+                ) {
+                    ObservationList(
+                        observations = listOf(
+                            InsightObservation(
+                                title = "Repeated repair route",
+                                message = "${insight.sourceDisplayName} -> ${insight.destinationDisplayName} appeared in ${insight.budgetsAppearedIn} budgets."
+                            )
+                        )
+                    )
+                    InsightMetricCard(
+                        title = "Budgets appeared",
+                        value = insight.budgetsAppearedIn.toString(),
+                        supporting = "Repeated across separate budgets"
+                    )
+                    InsightMetricCard(
+                        title = "Total moved",
+                        value = maskedAmount(insight.totalAmount, privacyModeEnabled),
+                        supporting = "${insight.transferCount} total moves"
+                    )
+                    InsightMetricCard(
+                        title = "Average move",
+                        value = maskedAmount(insight.averageAmount, privacyModeEnabled),
+                        supporting = "Typical amount per transfer"
+                    )
                 }
             }
         }
@@ -1447,8 +2552,7 @@ private fun WalletCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clickable(onClick = onOpen),
+            .padding(horizontal = 16.dp),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = if (isInlineSpendExpanded) {
@@ -1532,10 +2636,10 @@ private fun WalletCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(onClick = onSpend, modifier = Modifier.weight(1f)) {
-                    Text(if (isInlineSpendExpanded) "Close" else "Spend")
+                    Text("Spend")
                 }
                 OutlinedButton(onClick = onOpen, modifier = Modifier.weight(1f)) {
-                    Text("Details")
+                    Text("Open")
                 }
                 Box {
                     var expanded by remember { mutableStateOf(false) }
@@ -1585,7 +2689,7 @@ private fun WalletCard(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Quick spend",
+                        text = "Quick spend for ${wallet.name}",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1598,6 +2702,10 @@ private fun WalletCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequester)
+                    )
+                    QuickAmountChips(
+                        amounts = listOf(500L, 1_000L, 2_000L, 5_000L),
+                        onAmountSelected = { amount -> inlineAmount = amount.toString() }
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1627,6 +2735,24 @@ private fun WalletCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun QuickAmountChips(
+    amounts: List<Long>,
+    onAmountSelected: (Long) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        amounts.forEach { amount ->
+            AssistChip(
+                onClick = { onAmountSelected(amount) },
+                label = { Text(formatAmount(amount)) }
+            )
         }
     }
 }
@@ -1732,15 +2858,25 @@ private fun TransactionCard(
 }
 
 @Composable
-private fun EmptyState(title: String, subtitle: String) {
+private fun EmptyState(
+    title: String,
+    subtitle: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
+) {
     Card(
         modifier = Modifier.padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f))
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(text = subtitle, style = MaterialTheme.typography.bodyMedium)
+            if (actionLabel != null && onAction != null) {
+                FilledTonalButton(onClick = onAction) {
+                    Text(actionLabel)
+                }
+            }
         }
     }
 }
@@ -1927,6 +3063,7 @@ private fun WalletDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExpenseDialog(
     wallets: List<WalletSummary>,
@@ -1939,49 +3076,54 @@ private fun ExpenseDialog(
             initial.copy(walletId = initial.walletId ?: wallets.firstOrNull()?.id)
         )
     }
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text("Add Expense") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                WalletDropdown(
-                    label = "Wallet",
-                    wallets = wallets,
-                    selectedWalletId = draft.walletId,
-                    onSelected = { draft = draft.copy(walletId = it) }
-                )
-                OutlinedTextField(
-                    value = draft.amount,
-                    onValueChange = { draft = draft.copy(amount = it.filterNumericInput()) },
-                    label = { Text("Amount") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                DateInputField(
-                    value = draft.date,
-                    onValueChange = { draft = draft.copy(date = it) },
-                    label = "Date"
-                )
-                OutlinedTextField(
-                    value = draft.note,
-                    onValueChange = { draft = draft.copy(note = it) },
-                    label = { Text("Optional note") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onSave(draft) }) {
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Add Expense", style = MaterialTheme.typography.titleLarge)
+            WalletDropdown(
+                label = "Wallet",
+                wallets = wallets,
+                selectedWalletId = draft.walletId,
+                onSelected = { draft = draft.copy(walletId = it) }
+            )
+            OutlinedTextField(
+                value = draft.amount,
+                onValueChange = { draft = draft.copy(amount = it.filterNumericInput()) },
+                label = { Text("Amount") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+            DateInputField(
+                value = draft.date,
+                onValueChange = { draft = draft.copy(date = it) },
+                label = "Date"
+            )
+            OutlinedTextField(
+                value = draft.note,
+                onValueChange = { draft = draft.copy(note = it) },
+                label = { Text("Optional note") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = { onSave(draft) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Save")
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
         }
-    )
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TransferDialog(
     wallets: List<WalletSummary>,
@@ -2000,55 +3142,60 @@ private fun TransferDialog(
             )
         )
     }
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text("Move Money") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                WalletDropdown(
-                    label = "From wallet",
-                    wallets = wallets,
-                    selectedWalletId = draft.sourceWalletId,
-                    onSelected = { draft = draft.copy(sourceWalletId = it) }
-                )
-                WalletDropdown(
-                    label = "To wallet",
-                    wallets = wallets,
-                    selectedWalletId = draft.destinationWalletId,
-                    onSelected = { draft = draft.copy(destinationWalletId = it) }
-                )
-                OutlinedTextField(
-                    value = draft.amount,
-                    onValueChange = { draft = draft.copy(amount = it.filterNumericInput()) },
-                    label = { Text("Amount") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                DateInputField(
-                    value = draft.date,
-                    onValueChange = { draft = draft.copy(date = it) },
-                    label = "Date"
-                )
-                OutlinedTextField(
-                    value = draft.note,
-                    onValueChange = { draft = draft.copy(note = it) },
-                    label = { Text("Optional note") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onSave(draft) }) {
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Move Money", style = MaterialTheme.typography.titleLarge)
+            WalletDropdown(
+                label = "From wallet",
+                wallets = wallets,
+                selectedWalletId = draft.sourceWalletId,
+                onSelected = { draft = draft.copy(sourceWalletId = it) }
+            )
+            WalletDropdown(
+                label = "To wallet",
+                wallets = wallets,
+                selectedWalletId = draft.destinationWalletId,
+                onSelected = { draft = draft.copy(destinationWalletId = it) }
+            )
+            OutlinedTextField(
+                value = draft.amount,
+                onValueChange = { draft = draft.copy(amount = it.filterNumericInput()) },
+                label = { Text("Amount") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+            DateInputField(
+                value = draft.date,
+                onValueChange = { draft = draft.copy(date = it) },
+                label = "Date"
+            )
+            OutlinedTextField(
+                value = draft.note,
+                onValueChange = { draft = draft.copy(note = it) },
+                label = { Text("Optional note") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = { onSave(draft) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Save")
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
         }
-    )
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AdjustmentDialog(
     wallets: List<WalletSummary>,
@@ -2061,47 +3208,51 @@ private fun AdjustmentDialog(
             initial.copy(walletId = initial.walletId ?: wallets.firstOrNull()?.id)
         )
     }
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text("Manual Adjustment") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                WalletDropdown(
-                    label = "Wallet",
-                    wallets = wallets,
-                    selectedWalletId = draft.walletId,
-                    onSelected = { draft = draft.copy(walletId = it) }
-                )
-                OutlinedTextField(
-                    value = draft.signedAmount,
-                    onValueChange = { draft = draft.copy(signedAmount = it.filterSignedNumericInput()) },
-                    label = { Text("Signed amount (+/-)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                DateInputField(
-                    value = draft.date,
-                    onValueChange = { draft = draft.copy(date = it) },
-                    label = "Date"
-                )
-                OutlinedTextField(
-                    value = draft.note,
-                    onValueChange = { draft = draft.copy(note = it) },
-                    label = { Text("Optional note") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onSave(draft) }) {
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Manual Adjustment", style = MaterialTheme.typography.titleLarge)
+            WalletDropdown(
+                label = "Wallet",
+                wallets = wallets,
+                selectedWalletId = draft.walletId,
+                onSelected = { draft = draft.copy(walletId = it) }
+            )
+            OutlinedTextField(
+                value = draft.signedAmount,
+                onValueChange = { draft = draft.copy(signedAmount = it.filterSignedNumericInput()) },
+                label = { Text("Signed amount (+/-)") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+            DateInputField(
+                value = draft.date,
+                onValueChange = { draft = draft.copy(date = it) },
+                label = "Date"
+            )
+            OutlinedTextField(
+                value = draft.note,
+                onValueChange = { draft = draft.copy(note = it) },
+                label = { Text("Optional note") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = { onSave(draft) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Save")
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
         }
-    )
+    }
 }
 
 @Composable
@@ -2296,6 +3447,171 @@ private fun WalletTemplateDropdown(
                         expanded = false
                     }
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GlobalExpenseBottomSheet(
+    budgets: List<BudgetSummary>,
+    fetchWallets: (Long) -> kotlinx.coroutines.flow.Flow<List<com.mebudget.app.data.WalletEntity>>,
+    onDismiss: () -> Unit,
+    onSave: (Long, ExpenseDraft) -> Unit
+) {
+    if (budgets.isEmpty()) return
+
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val amountFocusRequester = remember { FocusRequester() }
+    val lastWalletByBudget = remember { mutableStateMapOf<Long, Long>() }
+    var selectedBudgetId by rememberSaveable { mutableStateOf<Long?>(budgets.firstOrNull()?.id) }
+    var showMoreOptions by rememberSaveable { mutableStateOf(false) }
+
+    val walletsFlow = remember(selectedBudgetId) {
+        selectedBudgetId?.let { fetchWallets(it) } ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    }
+    val walletEntities by walletsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val wallets = remember(walletEntities) {
+        walletEntities.filter { !it.archived }.map {
+            WalletSummary(
+                id = it.id,
+                budgetId = it.budgetId,
+                name = it.name,
+                plannedAmount = it.plannedAmount,
+                balance = 0L,
+                sortOrder = it.sortOrder,
+                archived = it.archived,
+                warning = false
+            )
+        }
+    }
+    var draft by remember { mutableStateOf(ExpenseDraft()) }
+    val hasReadyWallets = selectedBudgetId != null && wallets.isNotEmpty()
+
+    LaunchedEffect(selectedBudgetId, wallets) {
+        val budgetId = selectedBudgetId ?: return@LaunchedEffect
+        if (wallets.isEmpty()) return@LaunchedEffect
+        val rememberedWalletId = lastWalletByBudget[budgetId]
+        val fallbackWalletId = wallets.firstOrNull()?.id
+        val nextWalletId = when {
+            rememberedWalletId != null && wallets.any { it.id == rememberedWalletId } -> rememberedWalletId
+            draft.walletId != null && wallets.any { it.id == draft.walletId } -> draft.walletId
+            else -> fallbackWalletId
+        }
+        if (nextWalletId != null && draft.walletId != nextWalletId) {
+            draft = draft.copy(walletId = nextWalletId)
+        }
+    }
+
+    LaunchedEffect(selectedBudgetId, draft.walletId) {
+        selectedBudgetId?.let { budgetId ->
+            draft.walletId?.let { walletId ->
+                lastWalletByBudget[budgetId] = walletId
+            }
+        }
+    }
+
+    LaunchedEffect(hasReadyWallets) {
+        if (hasReadyWallets) {
+            amountFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Quick Add Expense", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    text = "Pick a budget, confirm the wallet, enter the amount, and save.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            WalletTemplateDropdown(
+                label = "Budget",
+                budgets = budgets,
+                selectedBudgetId = selectedBudgetId,
+                onSelected = {
+                    selectedBudgetId = it
+                    draft = draft.copy(walletId = null)
+                }
+            )
+
+            WalletDropdown(
+                label = "Wallet",
+                wallets = wallets,
+                selectedWalletId = draft.walletId,
+                onSelected = {
+                    draft = draft.copy(walletId = it)
+                    selectedBudgetId?.let { budgetId -> lastWalletByBudget[budgetId] = it }
+                }
+            )
+
+            OutlinedTextField(
+                value = draft.amount,
+                onValueChange = { draft = draft.copy(amount = it.filterNumericInput()) },
+                label = { Text("Amount") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                supportingText = {
+                    Text(
+                        text = if (draft.walletId == null) "Choose a wallet first." else "Today is used by default unless you change it.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(amountFocusRequester)
+            )
+            QuickAmountChips(
+                amounts = listOf(500L, 1_000L, 2_000L, 5_000L),
+                onAmountSelected = { amount ->
+                    draft = draft.copy(amount = amount.toString())
+                }
+            )
+            TextButton(
+                onClick = { showMoreOptions = !showMoreOptions },
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text(if (showMoreOptions) "Hide more options" else "More options")
+            }
+            if (showMoreOptions) {
+                DateInputField(
+                    value = draft.date,
+                    onValueChange = { draft = draft.copy(date = it) },
+                    label = "Date"
+                )
+                OutlinedTextField(
+                    value = draft.note,
+                    onValueChange = { draft = draft.copy(note = it) },
+                    label = { Text("Optional note") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Button(
+                onClick = {
+                    selectedBudgetId?.let { budgetId ->
+                        onSave(budgetId, draft)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = hasReadyWallets && draft.walletId != null && draft.amount.isNotBlank()
+            ) {
+                Text("Save Expense")
             }
         }
     }

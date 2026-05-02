@@ -10,6 +10,7 @@ import com.mebudget.app.data.BudgetDetail
 import com.mebudget.app.data.BudgetEntity
 import com.mebudget.app.data.BudgetRepository
 import com.mebudget.app.data.BudgetSummary
+import com.mebudget.app.data.GlobalInsightSummary
 import com.mebudget.app.data.NegativeBalanceRule
 import com.mebudget.app.data.TransactionSummary
 import com.mebudget.app.data.TransactionType
@@ -27,6 +28,7 @@ import java.time.LocalDate
 
 data class MeBudgetUiState(
     val budgets: List<BudgetSummary> = emptyList(),
+    val globalInsights: GlobalInsightSummary? = null,
     val selectedBudgetId: Long? = null,
     val selectedBudgetDetail: BudgetDetail? = null,
     val errorMessage: String? = null,
@@ -91,20 +93,28 @@ class MeBudgetViewModel(application: Application) : ViewModel() {
         privacyPrefs.getBoolean(PRIVACY_MODE_KEY, false)
     )
 
-    val uiState: StateFlow<MeBudgetUiState> = combine(
-        repository.observeBudgetSummaries(),
+    private val budgetSelectionState = combine(
         selectedBudgetId,
         selectedBudgetId.flatMapLatest { budgetId ->
             if (budgetId == null) flowOf(null) else repository.observeBudgetDetail(budgetId)
         },
-        transientError,
+        transientError
+    ) { currentBudgetId, detail, error ->
+        Triple(currentBudgetId, detail, error)
+    }
+
+    val uiState: StateFlow<MeBudgetUiState> = combine(
+        repository.observeBudgetSummaries(),
+        repository.observeGlobalInsights(),
+        budgetSelectionState,
         privacyModeEnabled
-    ) { budgets, currentBudgetId, detail, error, privacyEnabled ->
+    ) { budgets, globalInsights, budgetSelection, privacyEnabled ->
         MeBudgetUiState(
             budgets = budgets,
-            selectedBudgetId = currentBudgetId,
-            selectedBudgetDetail = detail,
-            errorMessage = error,
+            globalInsights = globalInsights,
+            selectedBudgetId = budgetSelection.first,
+            selectedBudgetDetail = budgetSelection.second,
+            errorMessage = budgetSelection.third,
             privacyModeEnabled = privacyEnabled
         )
     }.stateIn(
@@ -129,6 +139,10 @@ class MeBudgetViewModel(application: Application) : ViewModel() {
         val newValue = !privacyModeEnabled.value
         privacyModeEnabled.value = newValue
         privacyPrefs.edit().putBoolean(PRIVACY_MODE_KEY, newValue).apply()
+    }
+
+    fun fetchWalletsForBudget(budgetId: Long): kotlinx.coroutines.flow.Flow<List<com.mebudget.app.data.WalletEntity>> {
+        return repository.observeWalletsForBudget(budgetId)
     }
 
     fun createBudget(draft: BudgetDraft) {

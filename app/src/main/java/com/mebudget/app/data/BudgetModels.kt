@@ -106,9 +106,95 @@ data class TransactionSummary(
     val note: String?
 )
 
+data class WalletBudgetInsight(
+    val walletId: Long,
+    val walletKey: String,
+    val walletName: String,
+    val plannedAmount: Long,
+    val spentTotal: Long,
+    val transferInTotal: Long,
+    val transferInCount: Int,
+    val transferOutTotal: Long,
+    val transferOutCount: Int,
+    val adjustmentTotal: Long,
+    val endingBalance: Long,
+    val varianceFromPlan: Long,
+    val overspent: Boolean,
+    val transactionCount: Int,
+    val transferCount: Int
+)
+
+data class TransferPathInsight(
+    val sourceWalletId: Long,
+    val destinationWalletId: Long,
+    val sourceWalletName: String,
+    val destinationWalletName: String,
+    val transferCount: Int,
+    val totalAmount: Long
+)
+
+data class InsightObservation(
+    val title: String,
+    val message: String
+)
+
+data class BudgetInsightSummary(
+    val totalPlanned: Long,
+    val totalSpent: Long,
+    val totalTransferred: Long,
+    val totalAdjusted: Long,
+    val totalEndingBalance: Long,
+    val overspentWallets: List<WalletBudgetInsight>,
+    val mostRescuedWallet: WalletBudgetInsight?,
+    val topDonorWallet: WalletBudgetInsight?,
+    val topTransferPath: TransferPathInsight?,
+    val observations: List<InsightObservation>,
+    val walletInsights: List<WalletBudgetInsight>,
+    val transferPaths: List<TransferPathInsight>
+)
+
+data class WalletHistoryInsight(
+    val walletKey: String,
+    val displayName: String,
+    val budgetsAppearedIn: Int,
+    val averagePlannedAmount: Long,
+    val averageSpentAmount: Long,
+    val averageEndingBalance: Long,
+    val totalTransferIn: Long,
+    val totalTransferOut: Long,
+    val overspendCount: Int,
+    val negativeEndingCount: Int,
+    val rescueCount: Int,
+    val donorCount: Int,
+    val averageVarianceFromPlan: Long,
+    val volatilityScore: Long
+)
+
+data class TransferPathHistoryInsight(
+    val sourceWalletKey: String,
+    val destinationWalletKey: String,
+    val sourceDisplayName: String,
+    val destinationDisplayName: String,
+    val transferCount: Int,
+    val budgetsAppearedIn: Int,
+    val totalAmount: Long,
+    val averageAmount: Long
+)
+
+data class GlobalInsightSummary(
+    val mostUnderplannedWallet: WalletHistoryInsight?,
+    val mostFrequentRescueWallet: WalletHistoryInsight?,
+    val topDonorWallet: WalletHistoryInsight?,
+    val mostVolatileWallet: WalletHistoryInsight?,
+    val topRepeatedTransferPath: TransferPathHistoryInsight?,
+    val observations: List<InsightObservation>,
+    val walletPatterns: List<WalletHistoryInsight>,
+    val transferPatterns: List<TransferPathHistoryInsight>
+)
+
 data class BudgetDetail(
     val budget: BudgetEntity,
     val wallets: List<WalletSummary>,
-    val transactions: List<TransactionSummary>
+    val transactions: List<TransactionSummary>,
+    val insights: BudgetInsightSummary
 )
-
