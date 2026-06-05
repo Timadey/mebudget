@@ -21,3 +21,12 @@ class BudgetDetailViewModelFactory(
         return BudgetDetailViewModel(application) as T
     }
 }
+
+class QuickSpendViewModelFactory(
+    private val application: Application
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return QuickSpendViewModel(application) as T
+    }
+}
