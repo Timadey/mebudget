@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.mebudget.app.data.BudgetSummary
 import com.mebudget.app.quickspend.InstalledAppSource
 import com.mebudget.app.quickspend.LaunchableApp
+import com.mebudget.app.quickspend.QuickSpendOverlayService
 import com.mebudget.app.quickspend.QuickSpendPermissions
 import com.mebudget.app.quickspend.QuickSpendSettings
 import com.mebudget.app.quickspend.SharedPreferencesQuickSpendSettingsStore
@@ -62,6 +63,7 @@ class QuickSpendViewModel(
 
     fun refresh() {
         permissionTick.value += 1
+        syncOverlayService()
         viewModelScope.launch {
             launchableApps.value = installedAppSource.loadLaunchableApps()
         }
@@ -93,8 +95,23 @@ class QuickSpendViewModel(
         return QuickSpendPermissions.usageAccessSettingsIntent()
     }
 
+    fun syncOverlayService() {
+        val currentSettings = settingsStore.load()
+        val setupComplete = currentSettings.isSetupComplete(
+            overlayPermissionGranted = QuickSpendPermissions.canDrawOverlays(application),
+            usageAccessGranted = QuickSpendPermissions.hasUsageAccess(application)
+        )
+        val intent = Intent(application, QuickSpendOverlayService::class.java)
+        if (setupComplete) {
+            application.startService(intent)
+        } else {
+            application.stopService(intent)
+        }
+    }
+
     private fun save(updated: QuickSpendSettings) {
         settingsStore.save(updated)
         settings.value = updated
+        syncOverlayService()
     }
 }
