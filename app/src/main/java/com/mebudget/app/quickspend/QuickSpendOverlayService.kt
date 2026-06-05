@@ -2,7 +2,9 @@ package com.mebudget.app.quickspend
 
 import android.app.Service
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -97,12 +99,18 @@ class QuickSpendOverlayService : Service() {
             x = DEFAULT_X
             y = DEFAULT_Y
         }
-        val button = Button(this).apply {
-            text = "+"
-            textSize = 20f
-            minWidth = 0
-            minHeight = 0
-            setPadding(28, 12, 28, 12)
+        val button = TextView(this).apply {
+            text = "₦ Budget"
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setPadding(24, 14, 24, 14)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 48f
+                setColor(Color.rgb(32, 111, 96))
+            }
+            elevation = 8f
             setOnClickListener { showMiniForm() }
         }
         attachDragHandler(button, params)
@@ -131,11 +139,11 @@ class QuickSpendOverlayService : Service() {
 
         removeOverlayView()
         val params = baseLayoutParams(focusable = true).apply {
-            width = FORM_WIDTH
-            height = WindowManager.LayoutParams.WRAP_CONTENT
+            width = WindowManager.LayoutParams.MATCH_PARENT
+            height = WindowManager.LayoutParams.MATCH_PARENT
             gravity = Gravity.TOP or Gravity.START
-            x = overlayParams?.x ?: DEFAULT_X
-            y = overlayParams?.y ?: DEFAULT_Y
+            x = 0
+            y = 0
         }
         val amountInput = EditText(this).apply {
             hint = "Amount"
@@ -151,9 +159,26 @@ class QuickSpendOverlayService : Service() {
         val statusText = TextView(this).apply { text = "Loading wallets..." }
         var activeWallets: List<WalletEntity> = emptyList()
 
-        val form = LinearLayout(this).apply {
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(0x33000000)
+        }
+        val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(24, 24, 24, 24)
+            setPadding(28, 24, 28, 24)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 24f
+                setColor(Color.WHITE)
+            }
+            elevation = 12f
+        }
+        val titleText = TextView(this).apply {
+            text = "Record Spend"
+            textSize = 18f
+            setTextColor(Color.rgb(22, 28, 36))
+        }
+        panel.apply {
+            addView(titleText)
             addView(amountInput)
             addView(noteInput)
             addView(walletSpinner)
@@ -161,6 +186,17 @@ class QuickSpendOverlayService : Service() {
             addView(saveButton)
             addView(cancelButton)
         }
+        root.addView(
+            panel,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER
+            ).apply {
+                leftMargin = 24
+                rightMargin = 24
+            }
+        )
 
         cancelButton.setOnClickListener { showOverlay() }
         saveButton.setOnClickListener {
@@ -199,8 +235,8 @@ class QuickSpendOverlayService : Service() {
             }
         }
 
-        windowManager.addView(form, params)
-        overlayView = form
+        windowManager.addView(root, params)
+        overlayView = root
         overlayParams = params
         overlayVisible = true
         amountInput.requestFocus()
@@ -293,6 +329,5 @@ class QuickSpendOverlayService : Service() {
         const val POLL_INTERVAL_MILLIS = 1_000L
         const val DEFAULT_X = 24
         const val DEFAULT_Y = 240
-        const val FORM_WIDTH = 720
     }
 }
