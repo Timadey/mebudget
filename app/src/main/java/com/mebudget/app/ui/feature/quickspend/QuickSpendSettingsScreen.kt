@@ -50,7 +50,23 @@ fun QuickSpendSettingsScreen(
 ) {
     LaunchedEffect(Unit) { onRefresh() }
     var budgetMenuExpanded by remember { mutableStateOf(false) }
+    var appSearchQuery by remember { mutableStateOf("") }
     val selectedBudget = state.budgets.firstOrNull { it.id == state.settings.selectedBudgetId }
+    val selectedPackages = state.settings.selectedAppPackages
+    val filteredApps = remember(state.launchableApps, selectedPackages, appSearchQuery) {
+        val query = appSearchQuery.trim().lowercase()
+        state.launchableApps
+            .filter { app ->
+                query.isEmpty() ||
+                    app.label.lowercase().contains(query) ||
+                    app.packageName.lowercase().contains(query)
+            }
+            .sortedWith(
+                compareByDescending<com.mebudget.app.quickspend.LaunchableApp> {
+                    selectedPackages.contains(it.packageName)
+                }.thenBy { it.label.lowercase() }
+            )
+    }
 
     Scaffold(
         topBar = {
@@ -150,18 +166,31 @@ fun QuickSpendSettingsScreen(
             }
 
             item {
-                Text("Selected bank/payment apps", style = MaterialTheme.typography.titleMedium)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Bank/payment apps", style = MaterialTheme.typography.titleMedium)
+                    Text("${selectedPackages.size} selected. The floating button only appears over apps you choose.")
+                    OutlinedTextField(
+                        value = appSearchQuery,
+                        onValueChange = { appSearchQuery = it },
+                        label = { Text("Search apps") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
-            items(state.launchableApps, key = { it.packageName }) { app ->
-                val selected = state.settings.selectedAppPackages.contains(app.packageName)
+            items(filteredApps, key = { it.packageName }) { app ->
+                val selected = selectedPackages.contains(app.packageName)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    DrawableIconImage(
+                        drawable = app.icon,
+                        contentDescription = null
+                    )
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(app.label)
+                        Text(app.label, style = MaterialTheme.typography.bodyLarge)
                         Text(app.packageName, style = MaterialTheme.typography.bodySmall)
                     }
                     IconButton(onClick = { onToggleApp(app.packageName) }) {
