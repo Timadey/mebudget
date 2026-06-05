@@ -58,6 +58,27 @@ Display over other apps permission is required to draw the floating button and m
 
 Usage Access is required to know which app is currently in front. MeBudget uses it only to compare the foreground package name with the user-selected package names. If Usage Access is missing, bank-app-only display should be disabled. A later fallback can support an always-visible floating button, but that is outside the first implementation.
 
+The settings page should use a calm setup-checklist structure. It should explain what Quick Spend does, what the user gains, and why each permission is needed. The page should avoid sounding like MeBudget watches the bank app. It should state that MeBudget is manual-entry only and does not read bank screens.
+
+Recommended page structure:
+
+- header: "Quick Spend"
+- explanation: "Record expenses while using your bank or payment app, so your budget balance stays accurate."
+- privacy line: "Manual entry only. MeBudget does not read your bank screen."
+- setup checklist:
+  - choose quick-spend budget
+  - allow floating button
+  - allow app detection
+  - select bank/payment apps
+  - enable Quick Spend
+- benefits:
+  - record before or after payment
+  - avoid balance mismatch
+  - works only on apps the user chooses
+- status:
+  - "Ready over selected apps" when complete
+  - otherwise show the next missing setup step
+
 ## App Selection
 
 MeBudget should not hardcode bank apps as the source of truth. Users may use different Nigerian banks, fintech apps, payment apps, or package variants.
@@ -66,8 +87,10 @@ The app picker should list installed launchable apps with:
 
 - app name
 - package name
-- app icon if practical
+- app icon
 - selected/unselected state
+- search by app name or package name
+- selected app count
 
 The user manually selects the apps where the floating button should appear. Selected package names are saved locally.
 
@@ -82,6 +105,16 @@ Button behavior:
 - is draggable so it can be moved away from important bank app controls
 - stays compact and unobtrusive
 - opens the mini form when tapped
+- visually suggests MeBudget without interrupting the banking flow
+
+Recommended button style:
+
+- compact pill
+- text: "₦ Budget"
+- solid app-accent background
+- subtle elevation
+- rounded shape
+- small enough to sit near a screen edge
 
 Mini form fields:
 
@@ -92,6 +125,8 @@ Mini form fields:
 - cancel
 
 The amount field should be focused first. Date defaults to today. The form should not include extra fields in the first version because speed is the main product requirement.
+
+The mini form should look like a focused panel, not a transparent raw overlay. True system-overlay blur is not reliable across Android versions, so the first implementation should use a light dimmed scrim behind a solid rounded panel. The panel should include a short title, "Record Spend", then amount, note, wallet, save, and cancel.
 
 ## Save Behavior
 
@@ -149,13 +184,17 @@ Unit tests:
 Manual Android verification:
 
 - setup shows missing permission states correctly
+- settings page explains Quick Spend benefits and privacy boundaries clearly
+- app picker supports search by app name and package name
+- app picker shows app icons and selected state
 - overlay permission flow returns to the app cleanly
 - usage access flow returns to the app cleanly
 - floating button appears only over selected apps
+- floating button is branded as MeBudget without taking too much space
 - floating button does not appear over unselected apps
 - draggable button position persists during service lifetime
+- quick-spend form has a solid panel and dimmed background
 - quick-spend save creates an expense for today
 - errors display for invalid amount and missing wallet
 - revoking overlay permission hides the overlay
 - revoking usage access disables bank-app detection
-
