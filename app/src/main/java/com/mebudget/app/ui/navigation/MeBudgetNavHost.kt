@@ -1,5 +1,6 @@
 package com.mebudget.app.ui
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -25,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -39,9 +42,16 @@ import com.mebudget.app.ui.navigation.MeBudgetRoute
 fun MeBudgetNavHost(
     budgetsUiState: BudgetsUiState,
     budgetDetailUiState: BudgetDetailUiState,
+    quickSpendUiState: QuickSpendUiState,
     privacyModeEnabled: Boolean,
     snackbarHostState: SnackbarHostState,
     onTogglePrivacyMode: () -> Unit,
+    onQuickSpendRefresh: () -> Unit,
+    onQuickSpendToggleEnabled: (Boolean) -> Unit,
+    onQuickSpendSelectBudget: (Long?) -> Unit,
+    onQuickSpendToggleApp: (String) -> Unit,
+    quickSpendOverlaySettingsIntent: () -> Intent,
+    quickSpendUsageSettingsIntent: () -> Intent,
     onConsumePendingBudgetNavigation: () -> Unit,
     onOpenBudget: (Long) -> Unit,
     onCloseBudget: () -> Unit,
@@ -60,10 +70,15 @@ fun MeBudgetNavHost(
     fetchWalletsForBudget: (Long) -> kotlinx.coroutines.flow.Flow<List<com.mebudget.app.data.WalletEntity>>
 ) {
     var showGlobalExpense by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val topLevelRoutes = setOf(MeBudgetRoute.budgets, MeBudgetRoute.globalInsights)
+    val topLevelRoutes = setOf(
+        MeBudgetRoute.budgets,
+        MeBudgetRoute.globalInsights,
+        MeBudgetRoute.quickSpendSettings
+    )
 
     LaunchedEffect(budgetsUiState.pendingBudgetIdToOpen, currentRoute) {
         val selectedBudgetId = budgetsUiState.pendingBudgetIdToOpen ?: return@LaunchedEffect
@@ -120,6 +135,18 @@ fun MeBudgetNavHost(
                         icon = { Icon(Icons.Default.Analytics, contentDescription = null) },
                         label = { Text("Insights") }
                     )
+                    NavigationBarItem(
+                        selected = currentRoute == MeBudgetRoute.quickSpendSettings,
+                        onClick = {
+                            navController.navigate(MeBudgetRoute.quickSpendSettings) {
+                                popUpTo(MeBudgetRoute.budgets) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                        label = { Text("Quick") }
+                    )
                 }
             }
         }
@@ -161,6 +188,23 @@ fun MeBudgetNavHost(
                         },
                         showBack = false,
                         onBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(MeBudgetRoute.quickSpendSettings) {
+                    QuickSpendSettingsScreen(
+                        state = quickSpendUiState,
+                        onBack = { navController.popBackStack() },
+                        onRefresh = onQuickSpendRefresh,
+                        onToggleEnabled = onQuickSpendToggleEnabled,
+                        onSelectBudget = onQuickSpendSelectBudget,
+                        onToggleApp = onQuickSpendToggleApp,
+                        onOpenOverlaySettings = {
+                            context.startActivity(quickSpendOverlaySettingsIntent())
+                        },
+                        onOpenUsageSettings = {
+                            context.startActivity(quickSpendUsageSettingsIntent())
+                        }
                     )
                 }
 

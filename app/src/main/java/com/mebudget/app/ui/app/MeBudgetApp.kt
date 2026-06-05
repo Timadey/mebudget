@@ -18,11 +18,13 @@ import kotlin.jvm.JvmName
 fun MeBudgetApp(
     appViewModel: AppViewModel,
     budgetsViewModel: BudgetsViewModel,
-    budgetDetailViewModel: BudgetDetailViewModel
+    budgetDetailViewModel: BudgetDetailViewModel,
+    quickSpendViewModel: QuickSpendViewModel
 ) {
     val appUiState by appViewModel.uiState.collectAsStateWithLifecycle()
     val budgetsUiState by budgetsViewModel.uiState.collectAsStateWithLifecycle()
     val budgetDetailUiState by budgetDetailViewModel.uiState.collectAsStateWithLifecycle()
+    val quickSpendUiState by quickSpendViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val view = LocalView.current
@@ -57,9 +59,16 @@ fun MeBudgetApp(
     MeBudgetNavHost(
         budgetsUiState = budgetsUiState,
         budgetDetailUiState = budgetDetailUiState,
+        quickSpendUiState = quickSpendUiState,
         privacyModeEnabled = appUiState.privacyModeEnabled,
         snackbarHostState = snackbarHostState,
         onTogglePrivacyMode = appViewModel::togglePrivacyMode,
+        onQuickSpendRefresh = quickSpendViewModel::refresh,
+        onQuickSpendToggleEnabled = quickSpendViewModel::setEnabled,
+        onQuickSpendSelectBudget = quickSpendViewModel::selectBudget,
+        onQuickSpendToggleApp = quickSpendViewModel::toggleApp,
+        quickSpendOverlaySettingsIntent = quickSpendViewModel::overlaySettingsIntent,
+        quickSpendUsageSettingsIntent = quickSpendViewModel::usageAccessSettingsIntent,
         onConsumePendingBudgetNavigation = budgetsViewModel::consumePendingBudgetNavigation,
         onOpenBudget = budgetDetailViewModel::openBudget,
         onCloseBudget = budgetDetailViewModel::closeBudget,

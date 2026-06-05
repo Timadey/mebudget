@@ -12,6 +12,8 @@ import com.mebudget.app.ui.BudgetDetailViewModelFactory
 import com.mebudget.app.ui.BudgetsViewModel
 import com.mebudget.app.ui.BudgetsViewModelFactory
 import com.mebudget.app.ui.MeBudgetApp
+import com.mebudget.app.ui.QuickSpendViewModel
+import com.mebudget.app.ui.QuickSpendViewModelFactory
 import com.mebudget.app.ui.theme.MeBudgetTheme
 
 class MainActivity : ComponentActivity() {
@@ -29,10 +31,14 @@ class MainActivity : ComponentActivity() {
                 val budgetDetailViewModel: BudgetDetailViewModel = viewModel(
                     factory = BudgetDetailViewModelFactory(application)
                 )
+                val quickSpendViewModel: QuickSpendViewModel = viewModel(
+                    factory = QuickSpendViewModelFactory(application)
+                )
                 MeBudgetApp(
                     appViewModel = appViewModel,
                     budgetsViewModel = budgetsViewModel,
-                    budgetDetailViewModel = budgetDetailViewModel
+                    budgetDetailViewModel = budgetDetailViewModel,
+                    quickSpendViewModel = quickSpendViewModel
                 )
             }
         }

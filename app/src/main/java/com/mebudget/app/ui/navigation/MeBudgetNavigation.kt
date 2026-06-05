@@ -10,6 +10,7 @@ object MeBudgetRoute {
     const val globalInsights = "global-insights"
     const val globalWallet = "global-wallet"
     const val globalTransfer = "global-transfer"
+    const val quickSpendSettings = "quick-spend-settings"
 
     fun budget(budgetId: Long): String = "$budget/$budgetId"
     fun wallet(budgetId: Long, walletId: Long): String = "$budget/$budgetId/$wallet/$walletId"
