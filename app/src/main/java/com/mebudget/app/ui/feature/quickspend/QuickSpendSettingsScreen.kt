@@ -53,6 +53,16 @@ fun QuickSpendSettingsScreen(
     var appSearchQuery by remember { mutableStateOf("") }
     val selectedBudget = state.budgets.firstOrNull { it.id == state.settings.selectedBudgetId }
     val selectedPackages = state.settings.selectedAppPackages
+    val hasBudget = state.settings.selectedBudgetId != null
+    val hasApps = state.settings.selectedAppPackages.isNotEmpty()
+    val nextStep = when {
+        !hasBudget -> "Choose the budget where quick spends should be recorded."
+        !state.overlayPermissionGranted -> "Allow the floating button permission."
+        !state.usageAccessGranted -> "Allow app detection permission."
+        !hasApps -> "Select at least one bank or payment app."
+        !state.settings.enabled -> "Turn on Quick Spend."
+        else -> "Ready over selected apps."
+    }
     val filteredApps = remember(state.launchableApps, selectedPackages, appSearchQuery) {
         val query = appSearchQuery.trim().lowercase()
         state.launchableApps
@@ -88,31 +98,54 @@ fun QuickSpendSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Quick Spend", style = MaterialTheme.typography.headlineSmall)
+                    Text("Record expenses while using your bank or payment app, so your budget balance stays accurate.")
+                    Text(
+                        "Manual entry only. MeBudget does not read your bank screen.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = if (state.setupComplete) "Ready over selected apps" else nextStep,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    ChecklistRow("Choose quick-spend budget", hasBudget)
+                    ChecklistRow("Allow floating button", state.overlayPermissionGranted)
+                    ChecklistRow("Allow app detection", state.usageAccessGranted)
+                    ChecklistRow("Select bank/payment apps", hasApps)
+                    ChecklistRow("Enable Quick Spend", state.settings.enabled)
+                }
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("What you gain", style = MaterialTheme.typography.titleMedium)
+                    Text("Record before or after payment.")
+                    Text("Avoid balance mismatch between your bank and budget.")
+                    Text("Works only on apps you choose.")
+                }
+            }
+
+            item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Floating quick spend", style = MaterialTheme.typography.titleMedium)
-                        Text("Manual expense entry over selected payment apps.")
+                        Text("Enable Quick Spend", style = MaterialTheme.typography.titleMedium)
+                        Text("Show a small MeBudget button over selected apps.")
                     }
                     Switch(
                         checked = state.settings.enabled,
                         onCheckedChange = onToggleEnabled
                     )
                 }
-            }
-
-            item {
-                Text(
-                    text = if (state.setupComplete) {
-                        "Ready over selected apps"
-                    } else {
-                        "Complete setup to enable the floating button"
-                    },
-                    style = MaterialTheme.typography.bodyMedium
-                )
             }
 
             item {
@@ -206,6 +239,24 @@ fun QuickSpendSettingsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ChecklistRow(
+    label: String,
+    complete: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (complete) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+            contentDescription = null
+        )
+        Text(label)
     }
 }
 
