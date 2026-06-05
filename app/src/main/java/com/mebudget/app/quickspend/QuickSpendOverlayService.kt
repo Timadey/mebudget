@@ -13,6 +13,7 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.Button
@@ -258,6 +259,7 @@ class QuickSpendOverlayService : Service() {
     }
 
     private fun attachDragHandler(view: View, params: WindowManager.LayoutParams) {
+        val touchSlop = ViewConfiguration.get(this).scaledTouchSlop
         var initialX = 0
         var initialY = 0
         var initialTouchX = 0f
@@ -276,8 +278,13 @@ class QuickSpendOverlayService : Service() {
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    params.x = initialX + (event.rawX - initialTouchX).toInt()
-                    params.y = initialY + (event.rawY - initialTouchY).toInt()
+                    val deltaX = event.rawX - initialTouchX
+                    val deltaY = event.rawY - initialTouchY
+                    if (!moved && deltaX * deltaX + deltaY * deltaY < touchSlop * touchSlop) {
+                        return@setOnTouchListener true
+                    }
+                    params.x = initialX + deltaX.toInt()
+                    params.y = initialY + deltaY.toInt()
                     overlayView?.let { windowManager.updateViewLayout(it, params) }
                     moved = true
                     true
