@@ -1,7 +1,7 @@
 package com.mebudget.app.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -47,7 +48,8 @@ import com.mebudget.app.data.BudgetEntity
 import com.mebudget.app.data.TransactionSummary
 import com.mebudget.app.data.TransactionType
 import com.mebudget.app.data.WalletSummary
-import com.mebudget.app.ui.theme.Overspend
+import com.mebudget.app.ui.common.GradientProgressBar
+import com.mebudget.app.ui.theme.Rust
 import com.mebudget.app.ui.theme.Success
 import com.mebudget.app.ui.theme.Warning
 import java.time.LocalDate
@@ -72,7 +74,8 @@ fun WalletDetailRouteScreen(
     onAddTransfer: (Long, TransferDraft) -> Unit,
     onAddAdjustment: (Long, AdjustmentDraft) -> Unit,
     onUpdateTransaction: (TransactionEditorState) -> Unit,
-    onDeleteTransaction: (Long) -> Unit
+    onDeleteTransaction: (Long) -> Unit,
+    onDeleteWallet: (Long) -> Unit
 ) {
     val activeWallets = detail.wallets.filterNot { it.archived }
     var editingWallet by remember { mutableStateOf<WalletSummary?>(null) }
@@ -81,6 +84,7 @@ fun WalletDetailRouteScreen(
     var adjustmentDraft by remember(wallet.id) { mutableStateOf<AdjustmentDraft?>(null) }
     var editingTransaction by remember { mutableStateOf<TransactionSummary?>(null) }
     var deletingTransaction by remember { mutableStateOf<TransactionSummary?>(null) }
+    var deletingWallet by remember { mutableStateOf(false) }
 
     WalletDetailScreen(
         wallet = wallet,
@@ -104,7 +108,8 @@ fun WalletDetailRouteScreen(
         onMoveUp = { onMoveWallet(wallet.id, -1) },
         onMoveDown = { onMoveWallet(wallet.id, 1) },
         onEditTransaction = { editingTransaction = it },
-        onDeleteTransactionRequest = { deletingTransaction = it }
+        onDeleteTransactionRequest = { deletingTransaction = it },
+        onDeleteWallet = { deletingWallet = true }
     )
 
     editingWallet?.let { currentWallet ->
@@ -182,6 +187,17 @@ fun WalletDetailRouteScreen(
             }
         )
     }
+
+    if (deletingWallet) {
+        ConfirmDeleteDialog(
+            text = "Delete this wallet? Transactions referencing it will no longer be linked to it.",
+            onDismiss = { deletingWallet = false },
+            onConfirm = {
+                onDeleteWallet(wallet.id)
+                deletingWallet = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -201,20 +217,20 @@ fun BudgetDetailScreen(
     onAddTransfer: (Long, TransferDraft) -> Unit,
     onAddAdjustment: (Long, AdjustmentDraft) -> Unit,
     onUpdateTransaction: (TransactionEditorState) -> Unit,
-    onDeleteTransaction: (Long) -> Unit
+    onDeleteTransaction: (Long) -> Unit,
+    onDeleteBudget: (Long) -> Unit,
+    onDeleteWallet: (Long) -> Unit
 ) {
     val activeWallets = detail.wallets.filterNot { it.archived }
     val canAddTransfer = activeWallets.size > 1
-    val canAddAdjustment = activeWallets.isNotEmpty()
-    var inlineSpendWalletId by rememberSaveable(detail.budget.id) { mutableStateOf<Long?>(null) }
     var showArchived by rememberSaveable(detail.budget.id) { mutableStateOf(false) }
     var showWalletDialog by rememberSaveable { mutableStateOf(false) }
     var editingWallet by remember { mutableStateOf<WalletSummary?>(null) }
     var showTransferDialog by rememberSaveable { mutableStateOf(false) }
-    var showAdjustmentDialog by rememberSaveable { mutableStateOf(false) }
     var editingTransaction by remember { mutableStateOf<TransactionSummary?>(null) }
     var deletingTransaction by remember { mutableStateOf<TransactionSummary?>(null) }
     var showBudgetSettings by rememberSaveable { mutableStateOf(false) }
+    var showDeleteBudgetConfirm by rememberSaveable { mutableStateOf(false) }
 
     BudgetOverviewScreen(
         detail = detail,
@@ -222,33 +238,21 @@ fun BudgetDetailScreen(
         onTogglePrivacyMode = onTogglePrivacyMode,
         visibleWallets = detail.wallets.filter { showArchived || !it.archived },
         canAddTransfer = canAddTransfer,
-        canAddAdjustment = canAddAdjustment,
         showArchived = showArchived,
         onBack = onBack,
         onToggleArchived = { showArchived = it },
         onOpenSettings = { showBudgetSettings = true },
         onOpenInsights = onOpenInsights,
         onQuickTransfer = { showTransferDialog = true },
-        onQuickAdjustment = { showAdjustmentDialog = true },
         onAddWalletRequest = { showWalletDialog = true },
-        inlineSpendWalletId = inlineSpendWalletId,
-        onInlineSpendToggle = { walletId ->
-            inlineSpendWalletId = if (inlineSpendWalletId == walletId) null else walletId
-        },
-        onInlineSpendSave = { wallet, amount ->
-            onAddExpense(
-                detail.budget.id,
-                ExpenseDraft(walletId = wallet.id, amount = amount)
-            )
-            inlineSpendWalletId = null
-        },
         onOpenWallet = onOpenWallet,
         onEditWallet = { editingWallet = it },
         onArchiveWallet = { onArchiveWallet(it.id, !it.archived) },
         onMoveWalletUp = { onMoveWallet(it.id, -1) },
         onMoveWalletDown = { onMoveWallet(it.id, 1) },
         onEditTransaction = { editingTransaction = it },
-        onDeleteTransaction = { deletingTransaction = it }
+        onDeleteTransaction = { deletingTransaction = it },
+        onDeleteWallet = { onDeleteWallet(it.id) }
     )
 
     if (showBudgetSettings) {
@@ -272,6 +276,30 @@ fun BudgetDetailScreen(
                     )
                 )
                 showBudgetSettings = false
+            },
+            onDelete = { showDeleteBudgetConfirm = true }
+        )
+    }
+
+    if (showDeleteBudgetConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteBudgetConfirm = false },
+            title = { Text("Delete Budget") },
+            text = {
+                Text("Delete this budget? All wallets and transactions will be permanently removed.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteBudget(detail.budget.id)
+                    showDeleteBudgetConfirm = false
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteBudgetConfirm = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }
@@ -315,17 +343,6 @@ fun BudgetDetailScreen(
         )
     }
 
-    if (showAdjustmentDialog) {
-        AdjustmentDialog(
-            wallets = activeWallets,
-            onDismiss = { showAdjustmentDialog = false },
-            onSave = {
-                onAddAdjustment(detail.budget.id, it)
-                showAdjustmentDialog = false
-            }
-        )
-    }
-
     editingTransaction?.let { transaction ->
         TransactionEditorDialog(
             editorState = transaction.toEditorState(),
@@ -358,25 +375,21 @@ private fun BudgetOverviewScreen(
     onTogglePrivacyMode: () -> Unit,
     visibleWallets: List<WalletSummary>,
     canAddTransfer: Boolean,
-    canAddAdjustment: Boolean,
     showArchived: Boolean,
     onBack: () -> Unit,
     onToggleArchived: (Boolean) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenInsights: () -> Unit,
     onQuickTransfer: () -> Unit,
-    onQuickAdjustment: () -> Unit,
     onAddWalletRequest: () -> Unit,
-    inlineSpendWalletId: Long?,
-    onInlineSpendToggle: (Long) -> Unit,
-    onInlineSpendSave: (WalletSummary, String) -> Unit,
     onOpenWallet: (WalletSummary) -> Unit,
     onEditWallet: (WalletSummary) -> Unit,
     onArchiveWallet: (WalletSummary) -> Unit,
     onMoveWalletUp: (WalletSummary) -> Unit,
     onMoveWalletDown: (WalletSummary) -> Unit,
     onEditTransaction: (TransactionSummary) -> Unit,
-    onDeleteTransaction: (TransactionSummary) -> Unit
+    onDeleteTransaction: (TransactionSummary) -> Unit,
+    onDeleteWallet: (WalletSummary) -> Unit
 ) {
     val recentTransactions = detail.transactions.take(3)
     var selectedSection by rememberSaveable(detail.budget.id) {
@@ -420,8 +433,8 @@ private fun BudgetOverviewScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(bottom = 80.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(bottom = 72.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
                 BudgetStatusCard(detail = detail, privacyModeEnabled = privacyModeEnabled)
@@ -439,7 +452,7 @@ private fun BudgetOverviewScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = 20.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -466,14 +479,12 @@ private fun BudgetOverviewScreen(
                     }
                 }
 
-                item {
-                    BudgetActionStrip(
-                        canAddTransfer = canAddTransfer,
-                        canAddAdjustment = canAddAdjustment,
-                        onQuickTransfer = onQuickTransfer,
-                        onQuickAdjustment = onQuickAdjustment
-                    )
-                }
+                    item {
+                        BudgetActionStrip(
+                            canAddTransfer = canAddTransfer,
+                            onQuickTransfer = onQuickTransfer
+                        )
+                    }
 
                 if (visibleWallets.isEmpty()) {
                     item {
@@ -485,21 +496,15 @@ private fun BudgetOverviewScreen(
                 } else {
                     items(visibleWallets, key = { "wallet-${it.id}" }) { wallet ->
                         WalletCard(
+                            modifier = Modifier.animateItem(),
                             wallet = wallet,
                             privacyModeEnabled = privacyModeEnabled,
-                            isInlineSpendExpanded = inlineSpendWalletId == wallet.id,
                             onOpen = { onOpenWallet(wallet) },
-                            onSpend = { onInlineSpendToggle(wallet.id) },
-                            onInlineSpendSave = { amount -> onInlineSpendSave(wallet, amount) },
-                            onInlineSpendCancel = {
-                                if (inlineSpendWalletId == wallet.id) {
-                                    onInlineSpendToggle(wallet.id)
-                                }
-                            },
                             onEdit = { onEditWallet(wallet) },
                             onArchiveToggle = { onArchiveWallet(wallet) },
                             onMoveUp = { onMoveWalletUp(wallet) },
-                            onMoveDown = { onMoveWalletDown(wallet) }
+                            onMoveDown = { onMoveWalletDown(wallet) },
+                            onDelete = { onDeleteWallet(wallet) }
                         )
                     }
                 }
@@ -525,6 +530,7 @@ private fun BudgetOverviewScreen(
                 } else {
                     items(recentTransactions, key = { "tx-${it.id}" }) { transaction ->
                         TransactionCard(
+                            modifier = Modifier.animateItem(),
                             transaction = transaction,
                             privacyModeEnabled = privacyModeEnabled,
                             onEdit = { onEditTransaction(transaction) },
@@ -555,15 +561,25 @@ private fun BudgetSectionSwitcher(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         BudgetOverviewSection.entries.forEach { section ->
-            FilterChip(
-                selected = selectedSection == section,
-                onClick = { onSectionSelected(section) },
-                label = { Text(section.label) }
-            )
+            if (selectedSection == section) {
+                Button(
+                    onClick = { onSectionSelected(section) },
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+                ) {
+                    Text(section.label)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onSectionSelected(section) },
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+                ) {
+                    Text(section.label)
+                }
+            }
         }
     }
 }
@@ -577,12 +593,12 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = MaterialTheme.shapes.large
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = RoundedCornerShape(20.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -593,7 +609,8 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
                     Text(
                         maskedAmount(currentBalance, privacyModeEnabled),
                         style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -610,14 +627,12 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
                     )
                 }
             }
-
-            LinearProgressIndicator(
-                progress = { progress },
+            Spacer(modifier = Modifier.height(4.dp))
+            GradientProgressBar(
+                progress = progress,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp),
-                color = if (progress < 0.2f) Overspend else Success,
-                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
@@ -627,19 +642,20 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
 @Composable
 private fun BudgetActionStrip(
     canAddTransfer: Boolean,
-    canAddAdjustment: Boolean,
-    onQuickTransfer: () -> Unit,
-    onQuickAdjustment: () -> Unit
+    onQuickTransfer: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
-        shape = MaterialTheme.shapes.large
+            .padding(horizontal = 20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
@@ -653,9 +669,6 @@ private fun BudgetActionStrip(
             ) {
                 FilledTonalButton(onClick = onQuickTransfer, enabled = canAddTransfer, modifier = Modifier.weight(1f)) {
                     Text("Move Money")
-                }
-                FilledTonalButton(onClick = onQuickAdjustment, enabled = canAddAdjustment, modifier = Modifier.weight(1f)) {
-                    Text("Adjust")
                 }
             }
         }
@@ -679,7 +692,8 @@ private fun WalletDetailScreen(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onEditTransaction: (TransactionSummary) -> Unit,
-    onDeleteTransactionRequest: (TransactionSummary) -> Unit
+    onDeleteTransactionRequest: (TransactionSummary) -> Unit,
+    onDeleteWallet: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -691,8 +705,27 @@ private fun WalletDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onEditWallet) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    Box {
+                        var expanded by remember { mutableStateOf(false) }
+                        IconButton(onClick = { expanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Wallet actions", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Edit") },
+                                onClick = {
+                                    onEditWallet()
+                                    expanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete") },
+                                onClick = {
+                                    onDeleteWallet()
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
                     PrivacyToggleButton(
                         privacyModeEnabled = privacyModeEnabled,
@@ -709,8 +742,8 @@ private fun WalletDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(bottom = 80.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(bottom = 72.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
                 WalletSummaryPanel(
@@ -751,6 +784,7 @@ private fun WalletDetailScreen(
             } else {
                 items(transactions, key = { "tx-${it.id}" }) { transaction ->
                     TransactionCard(
+                        modifier = Modifier.animateItem(),
                         transaction = transaction,
                         privacyModeEnabled = privacyModeEnabled,
                         focusWalletId = wallet.id,
@@ -773,15 +807,19 @@ private fun WalletActionStrip(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
-        shape = MaterialTheme.shapes.large
+            .padding(horizontal = 20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Button(onClick = onSpend, modifier = Modifier.weight(1f)) {
                 Text("Add expense")
@@ -789,8 +827,20 @@ private fun WalletActionStrip(
             OutlinedButton(onClick = onTransfer, enabled = canTransfer, modifier = Modifier.weight(1f)) {
                 Text("Move money")
             }
-            OutlinedButton(onClick = onAdjust, modifier = Modifier.weight(1f)) {
-                Text("Adjust")
+            Box {
+                var expanded by remember { mutableStateOf(false) }
+                IconButton(onClick = { expanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Manual Adjustment") },
+                        onClick = {
+                            onAdjust()
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }
@@ -811,16 +861,12 @@ private fun WalletSummaryPanel(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = MaterialTheme.shapes.extraLarge,
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(
-            1.dp,
-            if (isOverspent) MaterialTheme.colorScheme.error.copy(alpha = 0.35f)
-            else MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
-        )
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
@@ -836,10 +882,10 @@ private fun WalletSummaryPanel(
                 text = maskedAmount(wallet.balance, privacyModeEnabled),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Black,
-                color = if (isOverspent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -858,14 +904,12 @@ private fun WalletSummaryPanel(
                 )
             }
 
-            LinearProgressIndicator(
-                progress = { progress },
+            GradientProgressBar(
+                progress = progress,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(12.dp),
-                color = if (isOverspent) Overspend else Success,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
-                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)
             )
         }
     }
@@ -873,17 +917,15 @@ private fun WalletSummaryPanel(
 
 @Composable
 private fun WalletCard(
+    modifier: Modifier = Modifier,
     wallet: WalletSummary,
     privacyModeEnabled: Boolean,
-    isInlineSpendExpanded: Boolean,
     onOpen: () -> Unit,
-    onSpend: () -> Unit,
-    onInlineSpendSave: (String) -> Unit,
-    onInlineSpendCancel: () -> Unit,
     onEdit: () -> Unit,
     onArchiveToggle: () -> Unit,
     onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit
+    onMoveDown: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val progress = if (wallet.plannedAmount > 0) (wallet.balance.toFloat() / wallet.plannedAmount.toFloat()).coerceIn(0f, 1f) else 0f
     val isOverspent = wallet.warning
@@ -893,38 +935,16 @@ private fun WalletCard(
         progress < 0.2f -> "Low runway"
         else -> "On track"
     }
-    var inlineAmount by remember(wallet.id, isInlineSpendExpanded) { mutableStateOf("") }
-    val focusRequester = remember { FocusRequester() }
-    val keyboardController = LocalSoftwareKeyboardController.current
-
-    LaunchedEffect(isInlineSpendExpanded) {
-        if (isInlineSpendExpanded) {
-            focusRequester.requestFocus()
-            keyboardController?.show()
-        }
-    }
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = MaterialTheme.shapes.medium,
+            .padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isInlineSpendExpanded) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isInlineSpendExpanded) 2.dp else 1.dp),
-        border = BorderStroke(
-            1.dp,
-            when {
-                isOverspent -> MaterialTheme.colorScheme.error.copy(alpha = 0.35f)
-                isInlineSpendExpanded -> MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-                else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
-            }
-        )
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
@@ -933,16 +953,29 @@ private fun WalletCard(
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = wallet.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Planned ${maskedAmount(wallet.plannedAmount, privacyModeEnabled)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isOverspent) {
+                            Box(
+                                modifier = Modifier
+                                    .width(4.dp)
+                                    .height(24.dp)
+                                    .background(Rust, RoundedCornerShape(2.dp))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Column {
+                            Text(
+                                text = wallet.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Planned ${maskedAmount(wallet.plannedAmount, privacyModeEnabled)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     AssistChip(
                         onClick = if (wallet.archived) onArchiveToggle else ({ }),
@@ -972,18 +1005,16 @@ private fun WalletCard(
                     text = maskedAmount(wallet.balance, privacyModeEnabled),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
-                    color = if (isOverspent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
-            LinearProgressIndicator(
-                progress = { progress },
+            GradientProgressBar(
+                progress = progress,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp),
-                color = if (isOverspent) Overspend else Success,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
-                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)
             )
 
             Row(
@@ -991,9 +1022,6 @@ private fun WalletCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FilledTonalButton(onClick = onSpend, modifier = Modifier.weight(1f)) {
-                    Text("Quick spend")
-                }
                 Button(onClick = onOpen, modifier = Modifier.weight(1f)) {
                     Text("Open")
                 }
@@ -1031,72 +1059,25 @@ private fun WalletCard(
                                 expanded = false
                             }
                         )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                onDelete()
+                                expanded = false
+                            }
+                        )
                     }
                 }
             }
 
-            if (isInlineSpendExpanded) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.55f), MaterialTheme.shapes.medium)
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Quick spend for ${wallet.name}",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedTextField(
-                        value = inlineAmount,
-                        onValueChange = { inlineAmount = it.filterNumericInput() },
-                        label = { Text("Amount") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester)
-                    )
-                    QuickAmountChips(
-                        amounts = listOf(500L, 1_000L, 2_000L, 5_000L),
-                        onAmountSelected = { amount -> inlineAmount = amount.toString() }
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        TextButton(
-                            onClick = {
-                                inlineAmount = ""
-                                keyboardController?.hide()
-                                onInlineSpendCancel()
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Cancel")
-                        }
-                        Button(
-                            onClick = {
-                                onInlineSpendSave(inlineAmount)
-                                inlineAmount = ""
-                                keyboardController?.hide()
-                            },
-                            enabled = inlineAmount.isNotBlank(),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Save")
-                        }
-                    }
-                }
-            }
         }
     }
 }
 
 @Composable
 private fun TransactionCard(
+    modifier: Modifier = Modifier,
     transaction: TransactionSummary,
     privacyModeEnabled: Boolean,
     focusWalletId: Long? = null,
@@ -1124,15 +1105,14 @@ private fun TransactionCard(
     }
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = MaterialTheme.shapes.medium,
+            .padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),

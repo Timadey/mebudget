@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Home
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -67,17 +70,16 @@ fun MeBudgetNavHost(
     onAddAdjustment: (Long, AdjustmentDraft) -> Unit,
     onUpdateTransaction: (TransactionEditorState) -> Unit,
     onDeleteTransaction: (Long) -> Unit,
-    fetchWalletsForBudget: (Long) -> kotlinx.coroutines.flow.Flow<List<com.mebudget.app.data.WalletEntity>>
+    onDeleteBudget: (Long) -> Unit,
+    onDeleteWallet: (Long) -> Unit
 ) {
-    var showGlobalExpense by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val topLevelRoutes = setOf(
         MeBudgetRoute.budgets,
-        MeBudgetRoute.globalInsights,
-        MeBudgetRoute.quickSpendSettings
+        MeBudgetRoute.globalInsights
     )
 
     LaunchedEffect(budgetsUiState.pendingBudgetIdToOpen, currentRoute) {
@@ -97,6 +99,11 @@ fun MeBudgetNavHost(
                 CenterAlignedTopAppBar(
                     title = { Text("MeBudget", style = MaterialTheme.typography.titleLarge) },
                     actions = {
+                        IconButton(onClick = {
+                            navController.navigate(MeBudgetRoute.quickSpendSettings)
+                        }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
                         PrivacyToggleButton(
                             privacyModeEnabled = privacyModeEnabled,
                             onTogglePrivacyMode = onTogglePrivacyMode
@@ -120,8 +127,19 @@ fun MeBudgetNavHost(
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                        label = { Text("Budgets") }
+                        icon = {
+                            Icon(
+                                Icons.Default.Home,
+                                contentDescription = "Budgets",
+                                modifier = Modifier.size(28.dp),
+                                tint = if (currentRoute == MeBudgetRoute.budgets) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        },
+                        label = null
                     )
                     NavigationBarItem(
                         selected = currentRoute == MeBudgetRoute.globalInsights,
@@ -132,20 +150,19 @@ fun MeBudgetNavHost(
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(Icons.Default.Analytics, contentDescription = null) },
-                        label = { Text("Insights") }
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == MeBudgetRoute.quickSpendSettings,
-                        onClick = {
-                            navController.navigate(MeBudgetRoute.quickSpendSettings) {
-                                popUpTo(MeBudgetRoute.budgets) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+                        icon = {
+                            Icon(
+                                Icons.Default.Analytics,
+                                contentDescription = "Insights",
+                                modifier = Modifier.size(28.dp),
+                                tint = if (currentRoute == MeBudgetRoute.globalInsights) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
                         },
-                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                        label = { Text("Quick") }
+                        label = null
                     )
                 }
             }
@@ -162,17 +179,17 @@ fun MeBudgetNavHost(
                 startDestination = MeBudgetRoute.budgets
             ) {
                 composable(MeBudgetRoute.budgets) {
-                    BudgetsScreen(
-                        budgets = budgetsUiState.budgets,
-                        onOpenBudget = { budgetId ->
-                            onOpenBudget(budgetId)
-                            navController.navigate(MeBudgetRoute.budget(budgetId))
-                        },
-                        privacyModeEnabled = privacyModeEnabled,
-                        onCreateBudget = onCreateBudget,
-                        onDuplicateBudget = onDuplicateBudget,
-                        onAddGlobalExpense = { showGlobalExpense = true }
-                    )
+                        BudgetsScreen(
+                            budgets = budgetsUiState.budgets,
+                            onOpenBudget = { budgetId ->
+                                onOpenBudget(budgetId)
+                                navController.navigate(MeBudgetRoute.budget(budgetId))
+                            },
+                            privacyModeEnabled = privacyModeEnabled,
+                            onCreateBudget = onCreateBudget,
+                            onDuplicateBudget = onDuplicateBudget,
+                            onDeleteBudget = onDeleteBudget
+                        )
                 }
 
                 composable(MeBudgetRoute.globalInsights) {
@@ -283,7 +300,13 @@ fun MeBudgetNavHost(
                             onAddTransfer = onAddTransfer,
                             onAddAdjustment = onAddAdjustment,
                             onUpdateTransaction = onUpdateTransaction,
-                            onDeleteTransaction = onDeleteTransaction
+                            onDeleteTransaction = onDeleteTransaction,
+                            onDeleteBudget = { budgetId ->
+                                onDeleteBudget(budgetId)
+                                onCloseBudget()
+                                navController.popBackStack()
+                            },
+                            onDeleteWallet = onDeleteWallet
                         )
                     } else {
                         LoadingState()
@@ -339,7 +362,8 @@ fun MeBudgetNavHost(
                             onAddTransfer = onAddTransfer,
                             onAddAdjustment = onAddAdjustment,
                             onUpdateTransaction = onUpdateTransaction,
-                            onDeleteTransaction = onDeleteTransaction
+                            onDeleteTransaction = onDeleteTransaction,
+                            onDeleteWallet = onDeleteWallet
                         )
                     } else {
                         LoadingState()
@@ -349,15 +373,4 @@ fun MeBudgetNavHost(
         }
     }
 
-    if (showGlobalExpense) {
-        GlobalExpenseBottomSheet(
-            budgets = budgetsUiState.budgets,
-            fetchWallets = fetchWalletsForBudget,
-            onDismiss = { showGlobalExpense = false },
-            onSave = { budgetId, draft ->
-                onAddExpense(budgetId, draft)
-                showGlobalExpense = false
-            }
-        )
-    }
 }

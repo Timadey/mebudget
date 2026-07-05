@@ -4,8 +4,6 @@ import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mebudget.app.data.GlobalInsightSummary
-import com.mebudget.app.data.WalletEntity
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -44,10 +42,6 @@ class BudgetsViewModel(application: Application) : ViewModel() {
         transientError.value = null
     }
 
-    fun fetchWalletsForBudget(budgetId: Long): Flow<List<WalletEntity>> {
-        return repository.observeWalletsForBudget(budgetId)
-    }
-
     fun createBudget(draft: BudgetDraft) {
         viewModelScope.launch {
             runCatching {
@@ -72,6 +66,12 @@ class BudgetsViewModel(application: Application) : ViewModel() {
                     pendingBudgetIdToOpen.value = duplicatedBudgetId
                 }
             }.onFailure(::emitError)
+        }
+    }
+
+    fun deleteBudget(budgetId: Long) {
+        viewModelScope.launch {
+            repository.deleteBudget(budgetId)
         }
     }
 

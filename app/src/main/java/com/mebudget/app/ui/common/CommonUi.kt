@@ -1,14 +1,16 @@
 package com.mebudget.app.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -55,12 +57,12 @@ fun EmptyState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null
 ) {
-    androidx.compose.material3.Card(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        colors = androidx.compose.material3.CardDefaults.cardColors(
+    Card(
+        modifier = Modifier.padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f))
+        )
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -93,11 +95,11 @@ fun PrivacyModeBanner(
     onTogglePrivacyMode: (() -> Unit)? = null
 ) {
     Card(
-        modifier = modifier.padding(horizontal = 16.dp),
+        modifier = modifier.padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f))
+        )
     ) {
         Row(
             modifier = Modifier
@@ -206,7 +208,8 @@ fun BudgetDialog(
     initial: BudgetDraft = BudgetDraft(),
     saveLabel: String = "Create",
     onDismiss: () -> Unit,
-    onSave: (BudgetDraft) -> Unit
+    onSave: (BudgetDraft) -> Unit,
+    onDelete: (() -> Unit)? = null
 ) {
     var draft by remember(initial) { mutableStateOf(initial) }
     AlertDialog(
@@ -240,6 +243,19 @@ fun BudgetDialog(
                     },
                     onSelected = { draft = draft.copy(negativeBalanceRule = it) }
                 )
+                if (onDelete != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider()
+                    TextButton(
+                        onClick = onDelete,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Delete Budget")
+                    }
+                }
             }
         },
         confirmButton = {

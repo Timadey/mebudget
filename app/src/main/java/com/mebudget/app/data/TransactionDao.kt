@@ -28,6 +28,9 @@ interface TransactionDao {
     @Delete
     suspend fun delete(transaction: TransactionEntity)
 
+    @Query("SELECT * FROM transactions WHERE sourceWalletId = :walletId OR destinationWalletId = :walletId")
+    suspend fun getTransactionsForWallet(walletId: Long): List<TransactionEntity>
+
     @Query("SELECT * FROM transactions WHERE id = :transactionId LIMIT 1")
     suspend fun getTransaction(transactionId: Long): TransactionEntity?
 }

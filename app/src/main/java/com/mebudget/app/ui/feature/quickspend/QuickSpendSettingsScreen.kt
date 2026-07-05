@@ -81,7 +81,7 @@ fun QuickSpendSettingsScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Quick Spend") },
+                title = { Text("Settings") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -99,7 +99,7 @@ fun QuickSpendSettingsScreen(
         ) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Quick Spend", style = MaterialTheme.typography.headlineSmall)
+                    Text("Settings", style = MaterialTheme.typography.headlineSmall)
                     Text("Record expenses while using your bank or payment app, so your budget balance stays accurate.")
                     Text(
                         "Manual entry only. MeBudget does not read your bank screen.",

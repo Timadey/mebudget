@@ -1,6 +1,5 @@
 package com.mebudget.app.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -64,11 +65,12 @@ fun BudgetsScreen(
     privacyModeEnabled: Boolean,
     onCreateBudget: (BudgetDraft) -> Unit,
     onDuplicateBudget: (Long, String) -> Unit,
-    onAddGlobalExpense: () -> Unit
+    onDeleteBudget: (Long) -> Unit
 ) {
     var showCreateOptions by rememberSaveable { mutableStateOf(false) }
     var showBlankBudgetDialog by rememberSaveable { mutableStateOf(false) }
     var templateBudgetId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var deletingBudgetId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     val totalBalance = budgets.sumOf { it.totalBalance }
     val activeWallets = budgets.sumOf { it.activeWalletCount }
@@ -76,8 +78,8 @@ fun BudgetsScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 80.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(bottom = 72.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             if (privacyModeEnabled) {
                 item {
@@ -97,7 +99,7 @@ fun BudgetsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -143,33 +145,17 @@ fun BudgetsScreen(
             } else {
                 items(budgets, key = { it.id }) { budget ->
                     BudgetSummaryCard(
+                        modifier = Modifier.animateItem(),
                         budget = budget,
                         privacyModeEnabled = privacyModeEnabled,
                         onOpen = { onOpenBudget(budget.id) },
-                        onDuplicate = { templateBudgetId = budget.id }
+                        onDuplicate = { templateBudgetId = budget.id },
+                        onDelete = { deletingBudgetId = budget.id }
                     )
                 }
             }
         }
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            if (budgets.isNotEmpty()) {
-                ExtendedFloatingActionButton(
-                    text = { Text("Add expense") },
-                    icon = { Icon(Icons.Default.Add, contentDescription = "Add Expense") },
-                    onClick = onAddGlobalExpense,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    expanded = true
-                )
-            }
-        }
     }
 
     if (showCreateOptions) {
@@ -209,6 +195,29 @@ fun BudgetsScreen(
             }
         )
     }
+
+    deletingBudgetId?.let { budgetId ->
+        AlertDialog(
+            onDismissRequest = { deletingBudgetId = null },
+            title = { Text("Delete Budget") },
+            text = {
+                Text("Delete this budget? All wallets and transactions will be permanently removed.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteBudget(budgetId)
+                    deletingBudgetId = null
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingBudgetId = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -216,10 +225,10 @@ private fun TotalSummarySection(totalBalance: Long, activeWallets: Int, privacyM
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = MaterialTheme.shapes.extraLarge
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = RoundedCornerShape(20.dp)
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
@@ -234,7 +243,7 @@ private fun TotalSummarySection(totalBalance: Long, activeWallets: Int, privacyM
                 text = maskedAmount(totalBalance, privacyModeEnabled),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -258,21 +267,23 @@ private fun TotalSummarySection(totalBalance: Long, activeWallets: Int, privacyM
 
 @Composable
 private fun BudgetSummaryCard(
+    modifier: Modifier = Modifier,
     budget: BudgetSummary,
     privacyModeEnabled: Boolean,
     onOpen: () -> Unit,
-    onDuplicate: () -> Unit
+    onDuplicate: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 20.dp)
             .clickable(onClick = onOpen),
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -290,22 +301,29 @@ private fun BudgetSummaryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                androidx.compose.material3.IconButton(onClick = onDuplicate) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    androidx.compose.material3.IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete budget",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    androidx.compose.material3.IconButton(onClick = onDuplicate) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = "Duplicate budget",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     Icon(
-                        Icons.Default.ContentCopy,
-                        contentDescription = "Duplicate budget",
-                        tint = MaterialTheme.colorScheme.primary
+                        Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                     )
                 }
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowForwardIos,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                )
             }
-
-            androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -331,9 +349,9 @@ private fun BudgetSummaryCard(
 
                 Text(
                     text = maskedAmount(budget.totalBalance, privacyModeEnabled),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -363,8 +381,9 @@ private fun BudgetCreationChoiceDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(onClick = onCreateBlank),
+                    shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -382,6 +401,7 @@ private fun BudgetCreationChoiceDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = hasTemplates, onClick = onCreateFromTemplate),
+                    shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (hasTemplates) {
                             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
@@ -389,11 +409,7 @@ private fun BudgetCreationChoiceDialog(
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
                         }
                     ),
-                    border = BorderStroke(
-                        1.dp,
-                        if (hasTemplates) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)
-                    )
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -484,167 +500,4 @@ private fun TemplateBudgetDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun GlobalExpenseBottomSheet(
-    budgets: List<BudgetSummary>,
-    fetchWallets: (Long) -> kotlinx.coroutines.flow.Flow<List<com.mebudget.app.data.WalletEntity>>,
-    onDismiss: () -> Unit,
-    onSave: (Long, ExpenseDraft) -> Unit
-) {
-    if (budgets.isEmpty()) return
 
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val amountFocusRequester = remember { FocusRequester() }
-    val lastWalletByBudget = remember { mutableStateMapOf<Long, Long>() }
-    var selectedBudgetId by rememberSaveable { mutableStateOf<Long?>(budgets.firstOrNull()?.id) }
-    var showMoreOptions by rememberSaveable { mutableStateOf(false) }
-
-    val walletsFlow = remember(selectedBudgetId) {
-        selectedBudgetId?.let { fetchWallets(it) } ?: kotlinx.coroutines.flow.flowOf(emptyList())
-    }
-    val walletEntities by walletsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    val wallets = remember(walletEntities) {
-        walletEntities.filter { !it.archived }.map {
-            WalletSummary(
-                id = it.id,
-                budgetId = it.budgetId,
-                name = it.name,
-                plannedAmount = it.plannedAmount,
-                balance = 0L,
-                sortOrder = it.sortOrder,
-                archived = it.archived,
-                warning = false
-            )
-        }
-    }
-    var draft by remember { mutableStateOf(ExpenseDraft()) }
-    val hasReadyWallets = selectedBudgetId != null && wallets.isNotEmpty()
-
-    LaunchedEffect(selectedBudgetId, wallets) {
-        val budgetId = selectedBudgetId ?: return@LaunchedEffect
-        if (wallets.isEmpty()) return@LaunchedEffect
-        val rememberedWalletId = lastWalletByBudget[budgetId]
-        val fallbackWalletId = wallets.firstOrNull()?.id
-        val nextWalletId = when {
-            rememberedWalletId != null && wallets.any { it.id == rememberedWalletId } -> rememberedWalletId
-            draft.walletId != null && wallets.any { it.id == draft.walletId } -> draft.walletId
-            else -> fallbackWalletId
-        }
-        if (nextWalletId != null && draft.walletId != nextWalletId) {
-            draft = draft.copy(walletId = nextWalletId)
-        }
-    }
-
-    LaunchedEffect(selectedBudgetId, draft.walletId) {
-        selectedBudgetId?.let { budgetId ->
-            draft.walletId?.let { walletId ->
-                lastWalletByBudget[budgetId] = walletId
-            }
-        }
-    }
-
-    LaunchedEffect(hasReadyWallets) {
-        if (hasReadyWallets) {
-            amountFocusRequester.requestFocus()
-            keyboardController?.show()
-        }
-    }
-
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Quick Add Expense", style = MaterialTheme.typography.titleLarge)
-                Text(
-                    text = "Pick a budget, confirm the wallet, enter the amount, and save.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            WalletTemplateDropdown(
-                label = "Budget",
-                budgets = budgets,
-                selectedBudgetId = selectedBudgetId,
-                onSelected = {
-                    selectedBudgetId = it
-                    draft = draft.copy(walletId = null)
-                }
-            )
-
-            WalletDropdown(
-                label = "Wallet",
-                wallets = wallets,
-                selectedWalletId = draft.walletId,
-                onSelected = {
-                    draft = draft.copy(walletId = it)
-                    selectedBudgetId?.let { budgetId -> lastWalletByBudget[budgetId] = it }
-                }
-            )
-
-            OutlinedTextField(
-                value = draft.amount,
-                onValueChange = { draft = draft.copy(amount = it.filterNumericInput()) },
-                label = { Text("Amount") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                supportingText = {
-                    Text(
-                        text = if (draft.walletId == null) "Choose a wallet first." else "Today is used by default unless you change it.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(amountFocusRequester)
-            )
-            QuickAmountChips(
-                amounts = listOf(500L, 1_000L, 2_000L, 5_000L),
-                onAmountSelected = { amount ->
-                    draft = draft.copy(amount = amount.toString())
-                }
-            )
-            TextButton(
-                onClick = { showMoreOptions = !showMoreOptions },
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Text(if (showMoreOptions) "Hide more options" else "More options")
-            }
-            if (showMoreOptions) {
-                DateInputField(
-                    value = draft.date,
-                    onValueChange = { draft = draft.copy(date = it) },
-                    label = "Date"
-                )
-                OutlinedTextField(
-                    value = draft.note,
-                    onValueChange = { draft = draft.copy(note = it) },
-                    label = { Text("Optional note") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            Button(
-                onClick = {
-                    selectedBudgetId?.let { budgetId ->
-                        onSave(budgetId, draft)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = hasReadyWallets && draft.walletId != null && draft.amount.isNotBlank()
-            ) {
-                Text("Save Expense")
-            }
-        }
-    }
-}

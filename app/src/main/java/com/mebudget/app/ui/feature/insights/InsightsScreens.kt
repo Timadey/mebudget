@@ -1,6 +1,5 @@
 package com.mebudget.app.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -26,7 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
@@ -36,9 +35,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.mebudget.app.ui.common.GradientProgressBar
 import com.mebudget.app.data.BudgetDetail
 import com.mebudget.app.data.BudgetInsightSummary
 import com.mebudget.app.data.GlobalInsightSummary
@@ -277,10 +276,10 @@ private fun BudgetInsightHeroCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.18f)),
-        shape = MaterialTheme.shapes.large
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -338,18 +337,12 @@ private fun BudgetInsightHeroCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                LinearProgressIndicator(
-                    progress = { spentRatio.coerceIn(0f, 1f) },
+                GradientProgressBar(
+                    progress = spentRatio.coerceIn(0f, 1f),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(10.dp),
-                    color = when {
-                        insights.overspentWallets.isNotEmpty() -> MaterialTheme.colorScheme.error
-                        spentRatio > 0.9f -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.primary
-                    },
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                    strokeCap = StrokeCap.Round
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                 )
             }
 
@@ -406,7 +399,7 @@ private fun WalletHealthRow(
     }
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -455,18 +448,12 @@ private fun WalletHealthRow(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                LinearProgressIndicator(
-                    progress = { spentRatio.coerceIn(0f, 1f) },
+                GradientProgressBar(
+                    progress = spentRatio.coerceIn(0f, 1f),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp),
-                    color = when (tone) {
-                        SignalTone.Good -> MaterialTheme.colorScheme.primary
-                        SignalTone.Warning -> MaterialTheme.colorScheme.tertiary
-                        SignalTone.Danger -> MaterialTheme.colorScheme.error
-                    },
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                    strokeCap = StrokeCap.Round
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                 )
             }
 
@@ -664,10 +651,10 @@ private fun GlobalInsightHeroCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.18f)),
-        shape = MaterialTheme.shapes.large
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -764,10 +751,10 @@ private fun PriorityInsightCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-        shape = MaterialTheme.shapes.large
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -853,8 +840,8 @@ private fun TransferRouteRow(
     supporting: String
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f))
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -922,8 +909,8 @@ private fun WalletHistoryVisualRow(
     }
     Card(
         modifier = Modifier.clickable(onClick = onOpen),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f))
     ) {
         Column(
             modifier = Modifier.padding(14.dp),

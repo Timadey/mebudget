@@ -57,3 +57,12 @@ fun MeBudgetTheme(content: @Composable () -> Unit) {
         content = content
     )
 }
+
+@Composable
+fun BrutalistBudgetTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = BrutalistLightColors,
+        typography = Typography,
+        content = content
+    )
+}

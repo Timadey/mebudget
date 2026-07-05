@@ -162,6 +162,12 @@ class BudgetDetailViewModel(application: Application) : ViewModel() {
         }
     }
 
+    fun deleteWallet(walletId: Long) {
+        viewModelScope.launch {
+            repository.deleteWallet(walletId)
+        }
+    }
+
     private fun emitError(throwable: Throwable) {
         transientError.value = throwable.message ?: "Something went wrong."
     }

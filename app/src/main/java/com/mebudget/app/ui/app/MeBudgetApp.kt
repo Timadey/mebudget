@@ -84,6 +84,7 @@ fun MeBudgetApp(
         onAddAdjustment = budgetDetailViewModel::addAdjustment,
         onUpdateTransaction = budgetDetailViewModel::updateTransaction,
         onDeleteTransaction = budgetDetailViewModel::deleteTransaction,
-        fetchWalletsForBudget = budgetsViewModel::fetchWalletsForBudget
+        onDeleteBudget = budgetsViewModel::deleteBudget,
+        onDeleteWallet = budgetDetailViewModel::deleteWallet
     )
 }

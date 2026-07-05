@@ -1,5 +1,6 @@
 package com.mebudget.app.ui.theme
 
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
 val Canvas = Color(0xFFF6F1E8)
@@ -20,3 +21,24 @@ val Success = Color(0xFF2F7D5A)
 val Info = Lagoon
 val Warning = Color(0xFFC48A1D)
 val Overspend = Color(0xFFB24733)
+
+val BrutalistLightColors = lightColorScheme(
+    primary = Color.Black,
+    onPrimary = Color.White,
+    primaryContainer = Color.White,
+    onPrimaryContainer = Color.Black,
+    secondary = Color.Black,
+    onSecondary = Color.White,
+    background = Color.White,
+    onBackground = Color.Black,
+    surface = Color.White,
+    onSurface = Color.Black,
+    surfaceVariant = Color(0xFFF5F5F5),
+    onSurfaceVariant = Color.Black,
+    error = Color(0xFFFF0000),
+    errorContainer = Color(0xFFFFF0F0),
+    onError = Color.White,
+    onErrorContainer = Color(0xFFCC0000),
+    outline = Color.Black,
+    outlineVariant = Color.Black
+)

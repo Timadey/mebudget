@@ -229,6 +229,25 @@ class BudgetRepository(
         transactionDao.delete(existing)
     }
 
+    suspend fun deleteBudget(budgetId: Long) {
+        val budget = budgetDao.getBudget(budgetId) ?: return
+        budgetDao.delete(budget)
+    }
+
+    suspend fun deleteWallet(walletId: Long) {
+        val wallet = walletDao.getWallet(walletId) ?: return
+        val relatedTransactions = transactionDao.getTransactionsForWallet(walletId)
+        relatedTransactions.forEach { tx ->
+            transactionDao.update(
+                tx.copy(
+                    sourceWalletId = if (tx.sourceWalletId == walletId) null else tx.sourceWalletId,
+                    destinationWalletId = if (tx.destinationWalletId == walletId) null else tx.destinationWalletId
+                )
+            )
+        }
+        walletDao.delete(wallet)
+    }
+
     private suspend fun validateAndPersist(
         budgetId: Long,
         draft: TransactionEntity,
