@@ -52,6 +52,17 @@ import com.mebudget.app.ui.common.GradientProgressBar
 import com.mebudget.app.ui.theme.Rust
 import com.mebudget.app.ui.theme.Success
 import com.mebudget.app.ui.theme.Warning
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import com.mebudget.app.ui.theme.BrutalistBudgetTheme
 import java.time.LocalDate
 
 private enum class BudgetOverviewSection(val label: String) {
@@ -367,7 +378,6 @@ fun BudgetDetailScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BudgetOverviewScreen(
     detail: BudgetDetail,
@@ -396,88 +406,89 @@ private fun BudgetOverviewScreen(
         mutableStateOf(BudgetOverviewSection.Wallets)
     }
 
-    Scaffold(
-        topBar = {
-            MediumTopAppBar(
-                title = {
-                    Column {
-                        Text(detail.budget.name, style = MaterialTheme.typography.titleLarge)
-                        Text(
-                            detail.budget.formatDateRange(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                    PrivacyToggleButton(
-                        privacyModeEnabled = privacyModeEnabled,
-                        onTogglePrivacyMode = onTogglePrivacyMode
+    BrutalistBudgetTheme {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onBack) {
+                    Text("[<]", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color.Black)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = detail.budget.name.uppercase(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        color = Color.Black
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(bottom = 72.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            item {
-                BudgetStatusCard(detail = detail, privacyModeEnabled = privacyModeEnabled)
+                    Text(
+                        detail.budget.formatDateRange(),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Black,
+                        color = Color.Black.copy(alpha = 0.6f)
+                    )
+                }
+                TextButton(onClick = onOpenSettings) {
+                    Text("[S]", fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color.Black)
+                }
+                TextButton(onClick = onTogglePrivacyMode) {
+                    val icon = if (privacyModeEnabled) "[P]" else "[p]"
+                    Text(icon, fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color.Black)
+                }
             }
+            HorizontalDivider(color = Color.Black, thickness = 2.dp)
 
-            item {
-                BudgetSectionSwitcher(
-                    selectedSection = selectedSection,
-                    onSectionSelected = { selectedSection = it }
-                )
-            }
-
-            if (selectedSection == BudgetOverviewSection.Wallets) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 72.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
                 item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Wallets",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                    BudgetStatusCard(detail = detail, privacyModeEnabled = privacyModeEnabled)
+                }
+
+                item {
+                    BudgetSectionSwitcher(
+                        selectedSection = selectedSection,
+                        onSectionSelected = { selectedSection = it }
+                    )
+                }
+
+                if (selectedSection == BudgetOverviewSection.Wallets) {
+                    item {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            FilterChip(
-                                selected = showArchived,
-                                onClick = { onToggleArchived(!showArchived) },
-                                label = { Text(if (showArchived) "Archived visible" else "Archived hidden") }
+                            Text(
+                                text = "WALLETS",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Black,
+                                color = Color.Black
                             )
-                            FilledTonalButton(onClick = onAddWalletRequest) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                                Spacer(modifier = Modifier.height(0.dp))
-                                Text("Add Wallet")
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = showArchived,
+                                    onClick = { onToggleArchived(!showArchived) },
+                                    label = { Text(if (showArchived) "Archived visible" else "Archived hidden") }
+                                )
+                                FilledTonalButton(onClick = onAddWalletRequest) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                                    Spacer(modifier = Modifier.height(0.dp))
+                                    Text("Add Wallet")
+                                }
                             }
                         }
                     }
-                }
 
                     item {
                         BudgetActionStrip(
@@ -486,67 +497,76 @@ private fun BudgetOverviewScreen(
                         )
                     }
 
-                if (visibleWallets.isEmpty()) {
+                    if (visibleWallets.isEmpty()) {
+                        item {
+                            EmptyState(
+                                title = "No wallets found",
+                                subtitle = "Add your first wallet to start tracking your budget."
+                            )
+                        }
+                    } else {
+                        items(visibleWallets, key = { "wallet-${it.id}" }) { wallet ->
+                            WalletCard(
+                                modifier = Modifier.animateItem(),
+                                wallet = wallet,
+                                privacyModeEnabled = privacyModeEnabled,
+                                onOpen = { onOpenWallet(wallet) },
+                                onEdit = { onEditWallet(wallet) },
+                                onArchiveToggle = { onArchiveWallet(wallet) },
+                                onMoveUp = { onMoveWalletUp(wallet) },
+                                onMoveDown = { onMoveWalletDown(wallet) },
+                                onDelete = { onDeleteWallet(wallet) }
+                            )
+                        }
+                    }
+                }
+
+                if (selectedSection == BudgetOverviewSection.Activity) {
                     item {
-                        EmptyState(
-                            title = "No wallets found",
-                            subtitle = "Add your first wallet to start tracking your budget."
+                        Text(
+                            text = "RECENT ACTIVITY",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            color = Color.Black,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                         )
                     }
-                } else {
-                    items(visibleWallets, key = { "wallet-${it.id}" }) { wallet ->
-                        WalletCard(
-                            modifier = Modifier.animateItem(),
-                            wallet = wallet,
-                            privacyModeEnabled = privacyModeEnabled,
-                            onOpen = { onOpenWallet(wallet) },
-                            onEdit = { onEditWallet(wallet) },
-                            onArchiveToggle = { onArchiveWallet(wallet) },
-                            onMoveUp = { onMoveWalletUp(wallet) },
-                            onMoveDown = { onMoveWalletDown(wallet) },
-                            onDelete = { onDeleteWallet(wallet) }
-                        )
+                    if (recentTransactions.isEmpty()) {
+                        item { EmptyState(title = "NO ACTIVITY", subtitle = "Transactions will appear here.") }
+                    } else {
+                        item {
+                            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                                recentTransactions.forEachIndexed { index, transaction ->
+                                    if (index == 0 || transaction.dateEpochDay != recentTransactions[index - 1].dateEpochDay) {
+                                        Text(
+                                            text = "── ${LocalDate.ofEpochDay(transaction.dateEpochDay)} ──",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Black,
+                                            color = Color.Black.copy(alpha = 0.4f),
+                                            modifier = Modifier.padding(vertical = 8.dp)
+                                        )
+                                    }
+                                    TransactionHistoryRow(
+                                        transaction = transaction,
+                                        privacyModeEnabled = privacyModeEnabled,
+                                        focusWalletId = null,
+                                        onEdit = { onEditTransaction(transaction) },
+                                        onDelete = { onDeleteTransaction(transaction) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-            }
 
-            if (selectedSection == BudgetOverviewSection.Activity) {
-                item {
-                    Text(
-                        text = "Recent activity",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                if (recentTransactions.isEmpty()) {
+                if (selectedSection == BudgetOverviewSection.Insights) {
                     item {
-                        EmptyState(
-                            title = "Quiet for now",
-                            subtitle = "Your recent expenses and transfers will show up here."
-                        )
-                    }
-                } else {
-                    items(recentTransactions, key = { "tx-${it.id}" }) { transaction ->
-                        TransactionCard(
-                            modifier = Modifier.animateItem(),
-                            transaction = transaction,
+                        BudgetInsightSection(
+                            insights = detail.insights,
                             privacyModeEnabled = privacyModeEnabled,
-                            onEdit = { onEditTransaction(transaction) },
-                            onDelete = { onDeleteTransaction(transaction) }
+                            onOpenInsights = onOpenInsights
                         )
                     }
-                }
-            }
-
-            if (selectedSection == BudgetOverviewSection.Insights) {
-                item {
-                    BudgetInsightSection(
-                        insights = detail.insights,
-                        privacyModeEnabled = privacyModeEnabled,
-                        onOpenInsights = onOpenInsights
-                    )
                 }
             }
         }
@@ -565,20 +585,22 @@ private fun BudgetSectionSwitcher(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         BudgetOverviewSection.entries.forEach { section ->
-            if (selectedSection == section) {
-                Button(
-                    onClick = { onSectionSelected(section) },
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
-                ) {
-                    Text(section.label)
-                }
-            } else {
-                OutlinedButton(
-                    onClick = { onSectionSelected(section) },
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
-                ) {
-                    Text(section.label)
-                }
+            val isSelected = section == selectedSection
+            Button(
+                onClick = { onSectionSelected(section) },
+                shape = RoundedCornerShape(0.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSelected) Color.Black else Color.White,
+                    contentColor = if (isSelected) Color.White else Color.Black
+                ),
+                border = BorderStroke(4.dp, Color.Black),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    section.label.uppercase(),
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
+                )
             }
         }
     }
@@ -594,46 +616,52 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        shape = RoundedCornerShape(20.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(0.dp),
+        border = BorderStroke(4.dp, Color.Black)
     ) {
-        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Bottom
             ) {
                 Column {
-                    Text("Remaining Balance", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "REMAINING",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp,
+                        color = Color.Black
+                    )
                     Text(
                         maskedAmount(currentBalance, privacyModeEnabled),
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = Color.Black
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         "planned ${maskedAmount(totalPlanned, privacyModeEnabled)}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Black,
+                        color = Color.Black.copy(alpha = 0.6f)
                     )
                     Text(
                         maskedPercent(progress, privacyModeEnabled),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (progress < 0.2f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        fontWeight = FontWeight.Black,
+                        color = Color.Black
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            GradientProgressBar(
+            BlockProgressBar(
                 progress = progress,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp),
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    .height(8.dp)
             )
         }
     }
@@ -644,33 +672,20 @@ private fun BudgetActionStrip(
     canAddTransfer: Boolean,
     onQuickTransfer: () -> Unit
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Button(
+            onClick = onQuickTransfer,
+            enabled = canAddTransfer,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(24.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
         ) {
-            Text(
-                text = "Quick actions",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilledTonalButton(onClick = onQuickTransfer, enabled = canAddTransfer, modifier = Modifier.weight(1f)) {
-                    Text("Move Money")
-                }
-            }
+            Text("MOVE MONEY", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         }
     }
 }
@@ -929,148 +944,94 @@ private fun WalletCard(
 ) {
     val progress = if (wallet.plannedAmount > 0) (wallet.balance.toFloat() / wallet.plannedAmount.toFloat()).coerceIn(0f, 1f) else 0f
     val isOverspent = wallet.warning
-    val statusLabel = when {
-        wallet.archived -> "Hidden"
-        isOverspent -> "Needs attention"
-        progress < 0.2f -> "Low runway"
-        else -> "On track"
-    }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .padding(horizontal = 20.dp)
+            .clickable(onClick = onOpen),
+        shape = RoundedCornerShape(0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(4.dp, Color.Black)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (isOverspent) {
-                            Box(
-                                modifier = Modifier
-                                    .width(4.dp)
-                                    .height(24.dp)
-                                    .background(Rust, RoundedCornerShape(2.dp))
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isOverspent) {
+                        Canvas(modifier = Modifier.size(10.dp)) {
+                            drawCircle(Color(0xFFFF0000))
                         }
-                        Column {
-                            Text(
-                                text = wallet.name,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Planned ${maskedAmount(wallet.plannedAmount, privacyModeEnabled)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AssistChip(
-                        onClick = if (wallet.archived) onArchiveToggle else ({ }),
-                        label = { Text(statusLabel) },
-                        leadingIcon = if (isOverspent) {
-                            {
-                                Icon(
-                                    Icons.Default.Warning,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(AssistChipDefaults.IconSize)
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                        colors = if (isOverspent) {
-                            AssistChipDefaults.assistChipColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer,
-                                labelColor = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        } else {
-                            AssistChipDefaults.assistChipColors()
-                        }
-                    )
+                    Column {
+                        Text(
+                            text = wallet.name.uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            color = Color.Black
+                        )
+                        Text(
+                            text = "planned ${maskedAmount(wallet.plannedAmount, privacyModeEnabled)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Black,
+                            color = Color.Black.copy(alpha = 0.6f)
+                        )
+                    }
                 }
                 Text(
                     text = maskedAmount(wallet.balance, privacyModeEnabled),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Color.Black
                 )
             }
-
-            GradientProgressBar(
+            BlockProgressBar(
                 progress = progress,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(4.dp),
-                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)
+                    .height(6.dp)
             )
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(onClick = onOpen, modifier = Modifier.weight(1f)) {
-                    Text("Open")
+                Text(
+                    text = (progress * 100).toInt().toString() + "%",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    color = Color.Black
+                )
+                val statusLabel = when {
+                    wallet.archived -> "HIDDEN"
+                    isOverspent -> "OVERSENT"
+                    progress < 0.2f -> "LOW"
+                    else -> "OK"
                 }
-                Box {
-                    var expanded by remember { mutableStateOf(false) }
-                    IconButton(onClick = { expanded = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Edit wallet") },
-                            onClick = {
-                                onEdit()
-                                expanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(if (wallet.archived) "Unhide" else "Hide") },
-                            onClick = {
-                                onArchiveToggle()
-                                expanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Move Up") },
-                            onClick = {
-                                onMoveUp()
-                                expanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Move Down") },
-                            onClick = {
-                                onMoveDown()
-                                expanded = false
-                            }
-                        )
-                        HorizontalDivider()
-                        DropdownMenuItem(
-                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                            onClick = {
-                                onDelete()
-                                expanded = false
-                            }
-                        )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = statusLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp,
+                        color = if (isOverspent) Color(0xFFFF0000) else Color.Black
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .border(BorderStroke(3.dp, Color.Black), RoundedCornerShape(24.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(">", fontWeight = FontWeight.Black, color = Color.Black)
                     }
                 }
             }
-
         }
     }
 }
@@ -1209,6 +1170,111 @@ private fun TransactionCard(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BlockProgressBar(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    filledColor: Color = Color.Black,
+    trackColor: Color = Color.Black.copy(alpha = 0.15f)
+) {
+    val segments = 12
+    val filledSegments = (progress * segments).toInt().coerceIn(0, segments)
+
+    Box(
+        modifier = modifier
+            .clipToBounds()
+            .drawBehind {
+                val segmentWidth = size.width / segments
+                for (i in 0 until segments) {
+                    val left = segmentWidth * i
+                    val color = if (i < filledSegments) filledColor else trackColor
+                    drawRect(
+                        color = color,
+                        topLeft = Offset(left, 0f),
+                        size = Size(
+                            segmentWidth - 2.dp.toPx(),
+                            size.height
+                        )
+                    )
+                }
+            }
+    )
+}
+
+@Composable
+private fun TransactionHistoryRow(
+    transaction: TransactionSummary,
+    privacyModeEnabled: Boolean,
+    focusWalletId: Long?,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val accentColor = when (transaction.type) {
+        TransactionType.EXPENSE -> Color(0xFFFF0000)
+        TransactionType.TRANSFER -> Color.Black
+        TransactionType.ADJUSTMENT -> Color(0xFFFF8800)
+    }
+    val amountText = transaction.amountText(focusWalletId, privacyModeEnabled)
+    val typeTag = when (transaction.type) {
+        TransactionType.EXPENSE -> "[EXP]"
+        TransactionType.TRANSFER -> "[TRF]"
+        TransactionType.ADJUSTMENT -> "[ADJ]"
+    }
+
+    var showActions by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { showActions = !showActions }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (showActions) {
+            TextButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                Text("[EDIT]", fontWeight = FontWeight.Black, color = Color.Black)
+            }
+            TextButton(onClick = onDelete) {
+                Text("[DEL]", fontWeight = FontWeight.Black, color = Color(0xFFFF0000))
+            }
+        } else {
+            Text(
+                text = transaction.title(focusWalletId),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Black,
+                color = Color.Black
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = amountText,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Black,
+                color = accentColor
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = typeTag,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Black,
+                color = Color.Black.copy(alpha = 0.5f)
+            )
+        }
+    }
+    transaction.note?.takeIf { it.isNotBlank() }?.let { note ->
+        if (!showActions) {
+            Text(
+                text = note,
+                modifier = Modifier.padding(start = 0.dp, bottom = 4.dp),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Black,
+                color = Color.Black.copy(alpha = 0.4f),
+                maxLines = 1
+            )
         }
     }
 }
