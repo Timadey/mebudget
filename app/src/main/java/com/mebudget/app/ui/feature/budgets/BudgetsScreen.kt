@@ -1,5 +1,7 @@
 package com.mebudget.app.ui
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,54 +11,36 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.unit.sp
 import com.mebudget.app.data.BudgetSummary
-import com.mebudget.app.data.WalletSummary
+import com.mebudget.app.ui.theme.BrutalistBudgetTheme
 
 @Composable
 fun BudgetsScreen(
@@ -76,86 +60,90 @@ fun BudgetsScreen(
     val activeWallets = budgets.sumOf { it.activeWalletCount }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 72.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            if (privacyModeEnabled) {
-                item {
-                    PrivacyModeBanner()
+        BrutalistBudgetTheme {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 72.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                if (privacyModeEnabled) {
+                    item {
+                        PrivacyModeBanner()
+                    }
                 }
-            }
 
-            item {
-                TotalSummarySection(
-                    totalBalance = totalBalance,
-                    activeWallets = activeWallets,
-                    privacyModeEnabled = privacyModeEnabled
-                )
-            }
+                item {
+                    TotalSummarySection(
+                        totalBalance = totalBalance,
+                        activeWallets = activeWallets,
+                        privacyModeEnabled = privacyModeEnabled
+                    )
+                }
 
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                item {
                     Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            text = if (budgets.isEmpty()) "Start here" else "Budgets",
+                            text = "■ BUDGETS ■",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 3.sp,
+                            color = Color.Black
                         )
-                        Text(
-                            text = if (budgets.isEmpty()) {
-                                "Create a budget before logging expenses."
-                            } else {
-                                "Open a budget for context, or use quick expense below."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    FilledTonalButton(
-                        onClick = { showCreateOptions = true },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-                        Text("New")
                     }
                 }
-            }
 
-            if (budgets.isEmpty()) {
                 item {
-                    EmptyState(
-                        title = "Start your financial journey",
-                        subtitle = "Create your first budget sheet to organize your spending and savings.",
-                        actionLabel = "Create Budget",
-                        onAction = { showCreateOptions = true }
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = { showCreateOptions = true },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Black,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text(
+                                "+ CREATE BUDGET",
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    }
                 }
-            } else {
-                items(budgets, key = { it.id }) { budget ->
-                    BudgetSummaryCard(
-                        modifier = Modifier.animateItem(),
-                        budget = budget,
-                        privacyModeEnabled = privacyModeEnabled,
-                        onOpen = { onOpenBudget(budget.id) },
-                        onDuplicate = { templateBudgetId = budget.id },
-                        onDelete = { deletingBudgetId = budget.id }
-                    )
+
+                if (budgets.isEmpty()) {
+                    item {
+                        EmptyState(
+                            title = "Start your financial journey",
+                            subtitle = "Create your first budget sheet to organize your spending and savings.",
+                            actionLabel = "Create Budget",
+                            onAction = { showCreateOptions = true }
+                        )
+                    }
+                } else {
+                    items(budgets, key = { it.id }) { budget ->
+                        BudgetSummaryCard(
+                            modifier = Modifier.animateItem(),
+                            budget = budget,
+                            privacyModeEnabled = privacyModeEnabled,
+                            onOpen = { onOpenBudget(budget.id) },
+                            onDuplicate = { templateBudgetId = budget.id },
+                            onDelete = { deletingBudgetId = budget.id }
+                        )
+                    }
                 }
             }
         }
-
     }
 
     if (showCreateOptions) {
@@ -225,42 +213,50 @@ private fun TotalSummarySection(totalBalance: Long, activeWallets: Int, privacyM
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        shape = RoundedCornerShape(20.dp)
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(0.dp),
+        border = BorderStroke(4.dp, Color.Black)
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = "Across all budgets",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = maskedAmount(totalBalance, privacyModeEnabled),
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onSurface
-            )
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
             ) {
-                Icon(
-                    Icons.Default.AccountBalanceWallet,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.secondary
-                )
+                Column {
+                    Text(
+                        text = "$activeWallets",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Black,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = "active wallets",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Black,
+                        color = Color.Black
+                    )
+                }
                 Text(
-                    text = "$activeWallets active wallets",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = maskedAmount(totalBalance, privacyModeEnabled),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Black,
+                    color = Color.Black
                 )
             }
+            HorizontalDivider(color = Color.Black, thickness = 1.dp)
+            Text(
+                text = "ACROSS ALL BUDGETS",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+                color = Color.Black
+            )
         }
     }
 }
@@ -279,11 +275,15 @@ private fun BudgetSummaryCard(
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .clickable(onClick = onOpen),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(4.dp, Color.Black)
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -291,67 +291,52 @@ private fun BudgetSummaryCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = budget.name,
+                        text = budget.name.uppercase(),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Black,
+                        color = Color.Black
                     )
                     Text(
                         text = budget.formatDateRange(),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Black,
+                        color = Color.Black.copy(alpha = 0.6f)
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    androidx.compose.material3.IconButton(onClick = onDelete) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete budget",
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                val isOverspent = budget.totalBalance < 0
+                val dotColor = if (isOverspent) Color(0xFFFF0000) else Color(0xFF00AA00)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Canvas(modifier = Modifier.size(10.dp)) {
+                        drawCircle(dotColor)
                     }
-                    androidx.compose.material3.IconButton(onClick = onDuplicate) {
-                        Icon(
-                            Icons.Default.ContentCopy,
-                            contentDescription = "Duplicate budget",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForwardIos,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isOverspent) "OVERSENT" else "ON TRACK",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp,
+                        color = dotColor
                     )
                 }
             }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        Icons.Default.AccountBalanceWallet,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "${budget.activeWalletCount} active",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Black,
+                        color = Color.Black.copy(alpha = 0.6f)
                     )
                 }
-
                 Text(
                     text = maskedAmount(budget.totalBalance, privacyModeEnabled),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Color.Black
                 )
             }
         }
@@ -367,7 +352,7 @@ private fun BudgetCreationChoiceDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = Color.White,
         tonalElevation = 0.dp,
         title = { Text("Create Budget") },
         text = {
@@ -381,19 +366,21 @@ private fun BudgetCreationChoiceDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(onClick = onCreateBlank),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    shape = RoundedCornerShape(0.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(4.dp, Color.Black)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text("Start blank", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("START BLANK", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.Black)
                         Text(
                             "Create a fresh budget and add wallets yourself.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = FontWeight.Black,
+                            color = Color.Black.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -401,21 +388,22 @@ private fun BudgetCreationChoiceDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = hasTemplates, onClick = onCreateFromTemplate),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(0.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (hasTemplates) {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                            Color.White
                         } else {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                            Color.White.copy(alpha = 0.45f)
                         }
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(4.dp, Color.Black)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text("Use template", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("USE TEMPLATE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.Black)
                         Text(
                             if (hasTemplates) {
                                 "Copy wallet names and planned amounts from an existing budget."
@@ -423,7 +411,8 @@ private fun BudgetCreationChoiceDialog(
                                 "Create one budget first to unlock templates."
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = FontWeight.Black,
+                            color = Color.Black.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -499,5 +488,3 @@ private fun TemplateBudgetDialog(
         }
     )
 }
-
-
