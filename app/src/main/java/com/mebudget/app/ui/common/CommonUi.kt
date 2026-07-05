@@ -24,8 +24,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
 import com.mebudget.app.data.BudgetSummary
 import com.mebudget.app.data.NegativeBalanceRule
 import com.mebudget.app.data.WalletSummary
@@ -59,17 +62,40 @@ fun EmptyState(
 ) {
     Card(
         modifier = Modifier.padding(horizontal = 20.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-        )
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(4.dp, Color.Black)
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(text = subtitle, style = MaterialTheme.typography.bodyMedium)
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = title.uppercase(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black,
+                color = Color.Black
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Black,
+                color = Color.Black.copy(alpha = 0.6f)
+            )
             if (actionLabel != null && onAction != null) {
-                FilledTonalButton(onClick = onAction) {
-                    Text(actionLabel)
+                Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = onAction,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Black,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(actionLabel.uppercase(), fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
             }
         }
