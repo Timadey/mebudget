@@ -17,8 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,12 +38,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
+import com.mebudget.app.ui.common.BlockProgressBar
 import com.mebudget.app.ui.theme.BrutalistBudgetTheme
 import java.time.LocalDate
 
@@ -81,117 +77,119 @@ fun WalletDetailRouteScreen(
     var deletingTransaction by remember { mutableStateOf<TransactionSummary?>(null) }
     var deletingWallet by remember { mutableStateOf(false) }
 
-    WalletDetailScreen(
-        wallet = wallet,
-        transactions = detail.transactions.filter {
-            it.sourceWalletId == wallet.id || it.destinationWalletId == wallet.id
-        },
-        privacyModeEnabled = privacyModeEnabled,
-        onTogglePrivacyMode = onTogglePrivacyMode,
-        canTransfer = activeWallets.size > 1,
-        onBack = onBack,
-        onSpend = { expenseDraft = ExpenseDraft(walletId = wallet.id) },
-        onTransfer = {
-            transferDraft = TransferDraft(
-                sourceWalletId = wallet.id,
-                destinationWalletId = activeWallets.firstOrNull { it.id != wallet.id }?.id
+    BrutalistBudgetTheme {
+        WalletDetailScreen(
+            wallet = wallet,
+            transactions = detail.transactions.filter {
+                it.sourceWalletId == wallet.id || it.destinationWalletId == wallet.id
+            },
+            privacyModeEnabled = privacyModeEnabled,
+            onTogglePrivacyMode = onTogglePrivacyMode,
+            canTransfer = activeWallets.size > 1,
+            onBack = onBack,
+            onSpend = { expenseDraft = ExpenseDraft(walletId = wallet.id) },
+            onTransfer = {
+                transferDraft = TransferDraft(
+                    sourceWalletId = wallet.id,
+                    destinationWalletId = activeWallets.firstOrNull { it.id != wallet.id }?.id
+                )
+            },
+            onAdjust = { adjustmentDraft = AdjustmentDraft(walletId = wallet.id) },
+            onEditWallet = { editingWallet = wallet },
+            onArchiveToggle = { onArchiveWallet(wallet.id, !wallet.archived) },
+            onMoveUp = { onMoveWallet(wallet.id, -1) },
+            onMoveDown = { onMoveWallet(wallet.id, 1) },
+            onEditTransaction = { editingTransaction = it },
+            onDeleteTransactionRequest = { deletingTransaction = it },
+            onDeleteWallet = { deletingWallet = true }
+        )
+
+        editingWallet?.let { currentWallet ->
+            WalletDialog(
+                title = "Edit Wallet",
+                initial = WalletDraft(
+                    walletId = currentWallet.id,
+                    name = currentWallet.name,
+                    plannedAmount = currentWallet.plannedAmount.toString()
+                ),
+                saveLabel = "Save",
+                onDismiss = { editingWallet = null },
+                onSave = {
+                    onSaveWallet(it)
+                    editingWallet = null
+                }
             )
-        },
-        onAdjust = { adjustmentDraft = AdjustmentDraft(walletId = wallet.id) },
-        onEditWallet = { editingWallet = wallet },
-        onArchiveToggle = { onArchiveWallet(wallet.id, !wallet.archived) },
-        onMoveUp = { onMoveWallet(wallet.id, -1) },
-        onMoveDown = { onMoveWallet(wallet.id, 1) },
-        onEditTransaction = { editingTransaction = it },
-        onDeleteTransactionRequest = { deletingTransaction = it },
-        onDeleteWallet = { deletingWallet = true }
-    )
+        }
 
-    editingWallet?.let { currentWallet ->
-        WalletDialog(
-            title = "Edit Wallet",
-            initial = WalletDraft(
-                walletId = currentWallet.id,
-                name = currentWallet.name,
-                plannedAmount = currentWallet.plannedAmount.toString()
-            ),
-            saveLabel = "Save",
-            onDismiss = { editingWallet = null },
-            onSave = {
-                onSaveWallet(it)
-                editingWallet = null
-            }
-        )
-    }
+        expenseDraft?.let { draft ->
+            ExpenseDialog(
+                wallets = activeWallets,
+                initial = draft,
+                onDismiss = { expenseDraft = null },
+                onSave = {
+                    onAddExpense(detail.budget.id, it)
+                    expenseDraft = null
+                }
+            )
+        }
 
-    expenseDraft?.let { draft ->
-        ExpenseDialog(
-            wallets = activeWallets,
-            initial = draft,
-            onDismiss = { expenseDraft = null },
-            onSave = {
-                onAddExpense(detail.budget.id, it)
-                expenseDraft = null
-            }
-        )
-    }
+        transferDraft?.let { draft ->
+            TransferDialog(
+                wallets = activeWallets,
+                initial = draft,
+                onDismiss = { transferDraft = null },
+                onSave = {
+                    onAddTransfer(detail.budget.id, it)
+                    transferDraft = null
+                }
+            )
+        }
 
-    transferDraft?.let { draft ->
-        TransferDialog(
-            wallets = activeWallets,
-            initial = draft,
-            onDismiss = { transferDraft = null },
-            onSave = {
-                onAddTransfer(detail.budget.id, it)
-                transferDraft = null
-            }
-        )
-    }
+        adjustmentDraft?.let { draft ->
+            AdjustmentDialog(
+                wallets = activeWallets,
+                initial = draft,
+                onDismiss = { adjustmentDraft = null },
+                onSave = {
+                    onAddAdjustment(detail.budget.id, it)
+                    adjustmentDraft = null
+                }
+            )
+        }
 
-    adjustmentDraft?.let { draft ->
-        AdjustmentDialog(
-            wallets = activeWallets,
-            initial = draft,
-            onDismiss = { adjustmentDraft = null },
-            onSave = {
-                onAddAdjustment(detail.budget.id, it)
-                adjustmentDraft = null
-            }
-        )
-    }
+        editingTransaction?.let { transaction ->
+            TransactionEditorDialog(
+                editorState = transaction.toEditorState(),
+                wallets = detail.wallets,
+                onDismiss = { editingTransaction = null },
+                onSave = {
+                    onUpdateTransaction(it)
+                    editingTransaction = null
+                }
+            )
+        }
 
-    editingTransaction?.let { transaction ->
-        TransactionEditorDialog(
-            editorState = transaction.toEditorState(),
-            wallets = detail.wallets,
-            onDismiss = { editingTransaction = null },
-            onSave = {
-                onUpdateTransaction(it)
-                editingTransaction = null
-            }
-        )
-    }
+        deletingTransaction?.let { transaction ->
+            ConfirmDeleteDialog(
+                text = "Delete this transaction? This will recalculate the wallet balances.",
+                onDismiss = { deletingTransaction = null },
+                onConfirm = {
+                    onDeleteTransaction(transaction.id)
+                    deletingTransaction = null
+                }
+            )
+        }
 
-    deletingTransaction?.let { transaction ->
-        ConfirmDeleteDialog(
-            text = "Delete this transaction? This will recalculate the wallet balances.",
-            onDismiss = { deletingTransaction = null },
-            onConfirm = {
-                onDeleteTransaction(transaction.id)
-                deletingTransaction = null
-            }
-        )
-    }
-
-    if (deletingWallet) {
-        ConfirmDeleteDialog(
-            text = "Delete this wallet? Transactions referencing it will no longer be linked to it.",
-            onDismiss = { deletingWallet = false },
-            onConfirm = {
-                onDeleteWallet(wallet.id)
-                deletingWallet = false
-            }
-        )
+        if (deletingWallet) {
+            ConfirmDeleteDialog(
+                text = "Delete this wallet? Transactions referencing it will no longer be linked to it.",
+                onDismiss = { deletingWallet = false },
+                onConfirm = {
+                    onDeleteWallet(wallet.id)
+                    deletingWallet = false
+                }
+            )
+        }
     }
 }
 
@@ -227,7 +225,8 @@ fun BudgetDetailScreen(
     var showBudgetSettings by rememberSaveable { mutableStateOf(false) }
     var showDeleteBudgetConfirm by rememberSaveable { mutableStateOf(false) }
 
-    BudgetOverviewScreen(
+    BrutalistBudgetTheme {
+        BudgetOverviewScreen(
         detail = detail,
         privacyModeEnabled = privacyModeEnabled,
         onTogglePrivacyMode = onTogglePrivacyMode,
@@ -250,115 +249,118 @@ fun BudgetDetailScreen(
         onDeleteWallet = { onDeleteWallet(it.id) }
     )
 
-    if (showBudgetSettings) {
-        BudgetDialog(
-            title = "Budget Settings",
-            initial = BudgetDraft(
-                name = detail.budget.name,
-                startDate = detail.budget.startDateEpochDay?.let(LocalDate::ofEpochDay)?.toString().orEmpty(),
-                endDate = detail.budget.endDateEpochDay?.let(LocalDate::ofEpochDay)?.toString().orEmpty(),
-                negativeBalanceRule = detail.budget.negativeBalanceRule
-            ),
-            saveLabel = "Save",
-            onDismiss = { showBudgetSettings = false },
-            onSave = {
-                onUpdateBudgetSettings(
-                    detail.budget.copy(
-                        name = it.name.trim(),
-                        startDateEpochDay = it.startDate.parseDateOrNull(),
-                        endDateEpochDay = it.endDate.parseDateOrNull(),
-                        negativeBalanceRule = it.negativeBalanceRule
+        if (showBudgetSettings) {
+            BudgetDialog(
+                title = "Budget Settings",
+                initial = BudgetDraft(
+                    name = detail.budget.name,
+                    startDate = detail.budget.startDateEpochDay?.let(LocalDate::ofEpochDay)?.toString().orEmpty(),
+                    endDate = detail.budget.endDateEpochDay?.let(LocalDate::ofEpochDay)?.toString().orEmpty(),
+                    negativeBalanceRule = detail.budget.negativeBalanceRule
+                ),
+                saveLabel = "Save",
+                onDismiss = { showBudgetSettings = false },
+                onSave = {
+                    onUpdateBudgetSettings(
+                        detail.budget.copy(
+                            name = it.name.trim(),
+                            startDateEpochDay = it.startDate.parseDateOrNull(),
+                            endDateEpochDay = it.endDate.parseDateOrNull(),
+                            negativeBalanceRule = it.negativeBalanceRule
+                        )
                     )
-                )
-                showBudgetSettings = false
-            },
-            onDelete = { showDeleteBudgetConfirm = true }
-        )
-    }
+                    showBudgetSettings = false
+                },
+                onDelete = { showDeleteBudgetConfirm = true }
+            )
+        }
 
-    if (showDeleteBudgetConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteBudgetConfirm = false },
-            title = { Text("Delete Budget") },
-            text = {
-                Text("Delete this budget? All wallets and transactions will be permanently removed.")
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDeleteBudget(detail.budget.id)
-                    showDeleteBudgetConfirm = false
-                }) {
-                    Text("Delete")
+        if (showDeleteBudgetConfirm) {
+            AlertDialog(
+                onDismissRequest = { showDeleteBudgetConfirm = false },
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp,
+                title = { Text("Delete Budget", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) },
+                text = {
+                    Text("Delete this budget? All wallets and transactions will be permanently removed.", color = MaterialTheme.colorScheme.onSurface)
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onDeleteBudget(detail.budget.id)
+                        showDeleteBudgetConfirm = false
+                    }) {
+                        Text("DELETE", fontWeight = FontWeight.Black, color = Color(0xFFFF0000))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteBudgetConfirm = false }) {
+                        Text("CANCEL", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteBudgetConfirm = false }) {
-                    Text("Cancel")
+            )
+        }
+
+        if (showWalletDialog) {
+            WalletDialog(
+                title = "Add Wallet",
+                onDismiss = { showWalletDialog = false },
+                onSave = {
+                    onAddWallet(detail.budget.id, it)
+                    showWalletDialog = false
                 }
-            }
-        )
-    }
+            )
+        }
 
-    if (showWalletDialog) {
-        WalletDialog(
-            title = "Add Wallet",
-            onDismiss = { showWalletDialog = false },
-            onSave = {
-                onAddWallet(detail.budget.id, it)
-                showWalletDialog = false
-            }
-        )
-    }
+        editingWallet?.let { wallet ->
+            WalletDialog(
+                title = "Edit Wallet",
+                initial = WalletDraft(
+                    walletId = wallet.id,
+                    name = wallet.name,
+                    plannedAmount = wallet.plannedAmount.toString()
+                ),
+                saveLabel = "Save",
+                onDismiss = { editingWallet = null },
+                onSave = {
+                    onSaveWallet(it)
+                    editingWallet = null
+                }
+            )
+        }
 
-    editingWallet?.let { wallet ->
-        WalletDialog(
-            title = "Edit Wallet",
-            initial = WalletDraft(
-                walletId = wallet.id,
-                name = wallet.name,
-                plannedAmount = wallet.plannedAmount.toString()
-            ),
-            saveLabel = "Save",
-            onDismiss = { editingWallet = null },
-            onSave = {
-                onSaveWallet(it)
-                editingWallet = null
-            }
-        )
-    }
+        if (showTransferDialog) {
+            TransferDialog(
+                wallets = activeWallets,
+                onDismiss = { showTransferDialog = false },
+                onSave = {
+                    onAddTransfer(detail.budget.id, it)
+                    showTransferDialog = false
+                }
+            )
+        }
 
-    if (showTransferDialog) {
-        TransferDialog(
-            wallets = activeWallets,
-            onDismiss = { showTransferDialog = false },
-            onSave = {
-                onAddTransfer(detail.budget.id, it)
-                showTransferDialog = false
-            }
-        )
-    }
+        editingTransaction?.let { transaction ->
+            TransactionEditorDialog(
+                editorState = transaction.toEditorState(),
+                wallets = detail.wallets,
+                onDismiss = { editingTransaction = null },
+                onSave = {
+                    onUpdateTransaction(it)
+                    editingTransaction = null
+                }
+            )
+        }
 
-    editingTransaction?.let { transaction ->
-        TransactionEditorDialog(
-            editorState = transaction.toEditorState(),
-            wallets = detail.wallets,
-            onDismiss = { editingTransaction = null },
-            onSave = {
-                onUpdateTransaction(it)
-                editingTransaction = null
-            }
-        )
-    }
-
-    deletingTransaction?.let { transaction ->
-        ConfirmDeleteDialog(
-            text = "Delete this transaction? This will recalculate the wallet balances.",
-            onDismiss = { deletingTransaction = null },
-            onConfirm = {
-                onDeleteTransaction(transaction.id)
-                deletingTransaction = null
-            }
-        )
+        deletingTransaction?.let { transaction ->
+            ConfirmDeleteDialog(
+                text = "Delete this transaction? This will recalculate the wallet balances.",
+                onDismiss = { deletingTransaction = null },
+                onConfirm = {
+                    onDeleteTransaction(transaction.id)
+                    deletingTransaction = null
+                }
+            )
+        }
     }
 }
 
@@ -399,31 +401,31 @@ private fun BudgetOverviewScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(onClick = onBack) {
-                    Text("[<]", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color.Black)
+                    Text("[<]", fontWeight = FontWeight.Black, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = detail.budget.name.uppercase(),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         detail.budget.formatDateRange(),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
                 TextButton(onClick = onOpenSettings) {
-                    Text("[S]", fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color.Black)
+                    Text("[S]", fontWeight = FontWeight.Black, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
                 TextButton(onClick = onTogglePrivacyMode) {
                     val icon = if (privacyModeEnabled) "[P]" else "[p]"
-                    Text(icon, fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color.Black)
+                    Text(icon, fontWeight = FontWeight.Black, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
-            HorizontalDivider(color = Color.Black, thickness = 2.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface, thickness = 2.dp)
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -454,21 +456,35 @@ private fun BudgetOverviewScreen(
                                 text = "WALLETS",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Black,
-                                color = Color.Black
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                FilterChip(
-                                    selected = showArchived,
+                                Button(
                                     onClick = { onToggleArchived(!showArchived) },
-                                    label = { Text(if (showArchived) "Archived visible" else "Archived hidden") }
-                                )
-                                FilledTonalButton(onClick = onAddWalletRequest) {
-                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                                    Spacer(modifier = Modifier.height(0.dp))
-                                    Text("Add Wallet")
+                                    shape = RoundedCornerShape(0.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (showArchived) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                                        contentColor = if (showArchived) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Text(if (showArchived) "Archived visible" else "Archived hidden", fontWeight = FontWeight.Black)
+                                }
+                                Button(
+                                    onClick = onAddWalletRequest,
+                                    shape = RoundedCornerShape(0.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Text("+ Add Wallet", fontWeight = FontWeight.Black)
                                 }
                             }
                         }
@@ -511,7 +527,7 @@ private fun BudgetOverviewScreen(
                             text = "RECENT ACTIVITY",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Black,
-                            color = Color.Black,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                         )
                     }
@@ -526,7 +542,7 @@ private fun BudgetOverviewScreen(
                                             text = "── ${LocalDate.ofEpochDay(transaction.dateEpochDay)} ──",
                                             style = MaterialTheme.typography.bodySmall,
                                             fontWeight = FontWeight.Black,
-                                            color = Color.Black.copy(alpha = 0.4f),
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                                             modifier = Modifier.padding(vertical = 8.dp)
                                         )
                                     }
@@ -574,10 +590,10 @@ private fun BudgetSectionSwitcher(
                 onClick = { onSectionSelected(section) },
                 shape = RoundedCornerShape(0.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) Color.Black else Color.White,
-                    contentColor = if (isSelected) Color.White else Color.Black
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                 ),
-                border = BorderStroke(4.dp, Color.Black),
+                border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline),
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
             ) {
                 Text(
@@ -600,10 +616,10 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(0.dp),
-        border = BorderStroke(4.dp, Color.Black)
+        border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
@@ -617,13 +633,13 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         maskedAmount(currentBalance, privacyModeEnabled),
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -631,13 +647,13 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
                         "planned ${maskedAmount(totalPlanned, privacyModeEnabled)}",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Text(
                         maskedPercent(progress, privacyModeEnabled),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -666,8 +682,8 @@ private fun BudgetActionStrip(
             onClick = onQuickTransfer,
             enabled = canAddTransfer,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(24.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
+            shape = RoundedCornerShape(0.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
         ) {
             Text("MOVE MONEY", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         }
@@ -702,28 +718,28 @@ private fun WalletDetailScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
-                Text("[<]", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color.Black)
+                Text("[<]", fontWeight = FontWeight.Black, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
             }
             Text(
                 text = wallet.name.uppercase(),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Black,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
             Box {
                 var expanded by remember { mutableStateOf(false) }
                 TextButton(onClick = { expanded = true }) {
-                    Text("[⋮]", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color.Black)
+                    Text("[⋮]", fontWeight = FontWeight.Black, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
                 DropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
-                    containerColor = Color.White,
-                    border = BorderStroke(3.dp, Color.Black)
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     DropdownMenuItem(
-                        text = { Text("EDIT", fontWeight = FontWeight.Black, color = Color.Black) },
+                        text = { Text("EDIT", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) },
                         onClick = { onEditWallet(); expanded = false }
                     )
                     DropdownMenuItem(
@@ -734,10 +750,10 @@ private fun WalletDetailScreen(
             }
             TextButton(onClick = onTogglePrivacyMode) {
                 val icon = if (privacyModeEnabled) "[P]" else "[p]"
-                Text(icon, fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color.Black)
+                Text(icon, fontWeight = FontWeight.Black, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
             }
         }
-        HorizontalDivider(color = Color.Black, thickness = 2.dp)
+        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface, thickness = 2.dp)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -768,7 +784,7 @@ private fun WalletDetailScreen(
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             if (transactions.isEmpty()) {
@@ -782,7 +798,7 @@ private fun WalletDetailScreen(
                                     text = "── ${LocalDate.ofEpochDay(transaction.dateEpochDay)} ──",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Black,
-                                    color = Color.Black.copy(alpha = 0.4f),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                                     modifier = Modifier.padding(vertical = 8.dp)
                                 )
                             }
@@ -817,8 +833,8 @@ private fun WalletActionStrip(
         Button(
             onClick = onSpend,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(24.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
+            shape = RoundedCornerShape(0.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
         ) {
             Text("ADD EXPENSE", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         }
@@ -826,9 +842,9 @@ private fun WalletActionStrip(
             onClick = onTransfer,
             enabled = canTransfer,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(3.dp, Color.Black),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black)
+            shape = RoundedCornerShape(0.dp),
+            border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
         ) {
             Text("MOVE MONEY", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         }
@@ -836,17 +852,17 @@ private fun WalletActionStrip(
             var expanded by remember { mutableStateOf(false) }
             OutlinedButton(
                 onClick = { expanded = true },
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(3.dp, Color.Black),
+                shape = RoundedCornerShape(0.dp),
+                border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                Text("[...]", fontWeight = FontWeight.Black, color = Color.Black)
+                Text("[...]", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
             }
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                containerColor = Color.White,
-                border = BorderStroke(3.dp, Color.Black)
+                containerColor = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
             ) {
                 DropdownMenuItem(
                     text = { Text("MANUAL ADJUSTMENT", fontWeight = FontWeight.Black) },
@@ -873,9 +889,9 @@ private fun WalletSummaryPanel(
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(0.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(4.dp, Color.Black)
+        border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -889,7 +905,7 @@ private fun WalletSummaryPanel(
                     .trimEnd(),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Black,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -900,13 +916,13 @@ private fun WalletSummaryPanel(
                     text = "planned ${maskedAmount(wallet.plannedAmount, privacyModeEnabled)}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
                 Text(
                     text = maskedPercent(progress, privacyModeEnabled),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             BlockProgressBar(
@@ -940,9 +956,9 @@ private fun WalletCard(
             .padding(horizontal = 20.dp)
             .clickable(onClick = onOpen),
         shape = RoundedCornerShape(0.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(4.dp, Color.Black)
+        border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
@@ -962,13 +978,13 @@ private fun WalletCard(
                             text = wallet.name.uppercase(),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Black,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "planned ${maskedAmount(wallet.plannedAmount, privacyModeEnabled)}",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Black,
-                            color = Color.Black.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -976,7 +992,7 @@ private fun WalletCard(
                     text = maskedAmount(wallet.balance, privacyModeEnabled),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             BlockProgressBar(
@@ -994,7 +1010,7 @@ private fun WalletCard(
                     text = (progress * 100).toInt().toString() + "%",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 val statusLabel = when {
                     wallet.archived -> "HIDDEN"
@@ -1008,52 +1024,21 @@ private fun WalletCard(
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp,
-                        color = if (isOverspent) Color(0xFFFF0000) else Color.Black
+                        color = if (isOverspent) Color(0xFFFF0000) else MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Box(
                         modifier = Modifier
                             .size(24.dp)
-                            .border(BorderStroke(3.dp, Color.Black), RoundedCornerShape(24.dp)),
+                            .border(BorderStroke(3.dp, MaterialTheme.colorScheme.outline), RoundedCornerShape(0.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(">", fontWeight = FontWeight.Black, color = Color.Black)
+                        Text(">", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
         }
     }
-}
-
-@Composable
-private fun BlockProgressBar(
-    progress: Float,
-    modifier: Modifier = Modifier,
-    filledColor: Color = Color.Black,
-    trackColor: Color = Color.Black.copy(alpha = 0.15f)
-) {
-    val segments = 12
-    val filledSegments = (progress * segments).toInt().coerceIn(0, segments)
-
-    Box(
-        modifier = modifier
-            .clipToBounds()
-            .drawBehind {
-                val segmentWidth = size.width / segments
-                for (i in 0 until segments) {
-                    val left = segmentWidth * i
-                    val color = if (i < filledSegments) filledColor else trackColor
-                    drawRect(
-                        color = color,
-                        topLeft = Offset(left, 0f),
-                        size = Size(
-                            segmentWidth - 2.dp.toPx(),
-                            size.height
-                        )
-                    )
-                }
-            }
-    )
 }
 
 @Composable
@@ -1066,7 +1051,7 @@ private fun TransactionHistoryRow(
 ) {
     val accentColor = when (transaction.type) {
         TransactionType.EXPENSE -> Color(0xFFFF0000)
-        TransactionType.TRANSFER -> Color.Black
+        TransactionType.TRANSFER -> MaterialTheme.colorScheme.onSurface
         TransactionType.ADJUSTMENT -> Color(0xFFFF8800)
     }
     val amountText = transaction.amountText(focusWalletId, privacyModeEnabled)
@@ -1087,7 +1072,7 @@ private fun TransactionHistoryRow(
     ) {
         if (showActions) {
             TextButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
-                Text("[EDIT]", fontWeight = FontWeight.Black, color = Color.Black)
+                Text("[EDIT]", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
             }
             TextButton(onClick = onDelete) {
                 Text("[DEL]", fontWeight = FontWeight.Black, color = Color(0xFFFF0000))
@@ -1098,7 +1083,7 @@ private fun TransactionHistoryRow(
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Black,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
@@ -1112,7 +1097,7 @@ private fun TransactionHistoryRow(
                 text = typeTag,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Black,
-                color = Color.Black.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
         }
     }
@@ -1123,7 +1108,7 @@ private fun TransactionHistoryRow(
                 modifier = Modifier.padding(start = 0.dp, bottom = 4.dp),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Black,
-                color = Color.Black.copy(alpha = 0.4f),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 maxLines = 1
             )
         }
@@ -1153,31 +1138,32 @@ private fun WalletDialog(
     var draft by remember(initial) { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        title = { Text(title, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                BrutalistTextField(
+                    label = "WALLET NAME",
                     value = draft.name,
-                    onValueChange = { draft = draft.copy(name = it) },
-                    label = { Text("Wallet name") },
-                    modifier = Modifier.fillMaxWidth()
+                    onValueChange = { draft = draft.copy(name = it) }
                 )
-                OutlinedTextField(
+                BrutalistTextField(
+                    label = "PLANNED AMOUNT",
                     value = draft.plannedAmount,
                     onValueChange = { draft = draft.copy(plannedAmount = it.filterNumericInput()) },
-                    label = { Text("Planned amount") },
-                    modifier = Modifier.fillMaxWidth()
+                    keyboardType = KeyboardType.Number
                 )
             }
         },
         confirmButton = {
             TextButton(onClick = { onSave(draft) }) {
-                Text(saveLabel)
+                Text(saveLabel, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("CANCEL", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
             }
         }
     )
@@ -1201,20 +1187,20 @@ private fun ExpenseDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp)
-                    .background(Color.Black)
+                    .background(MaterialTheme.colorScheme.primary)
             )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 16.dp)
-                    .padding(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     "ADD EXPENSE",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 BrutalistWalletDropdown(
                     label = "WALLET",
@@ -1241,12 +1227,11 @@ private fun ExpenseDialog(
                 Button(
                     onClick = { onSave(draft) },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(24.dp),
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(0.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Black,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
                     Text("SAVE", fontWeight = FontWeight.Black, letterSpacing = 2.sp)
@@ -1256,7 +1241,7 @@ private fun ExpenseDialog(
                         "cancel",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black.copy(alpha = 0.5f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
             }
@@ -1290,20 +1275,20 @@ private fun TransferDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp)
-                    .background(Color.Black)
+                    .background(MaterialTheme.colorScheme.primary)
             )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 16.dp)
-                    .padding(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     "MOVE MONEY",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 BrutalistWalletDropdown(
                     label = "FROM WALLET",
@@ -1336,12 +1321,11 @@ private fun TransferDialog(
                 Button(
                     onClick = { onSave(draft) },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(24.dp),
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(0.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Black,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
                     Text("SAVE", fontWeight = FontWeight.Black, letterSpacing = 2.sp)
@@ -1351,7 +1335,7 @@ private fun TransferDialog(
                         "cancel",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black.copy(alpha = 0.5f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
             }
@@ -1377,20 +1361,20 @@ private fun AdjustmentDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp)
-                    .background(Color.Black)
+                    .background(MaterialTheme.colorScheme.primary)
             )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 16.dp)
-                    .padding(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     "MANUAL ADJUSTMENT",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 BrutalistWalletDropdown(
                     label = "WALLET",
@@ -1417,12 +1401,11 @@ private fun AdjustmentDialog(
                 Button(
                     onClick = { onSave(draft) },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(24.dp),
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(0.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Black,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
                     Text("SAVE", fontWeight = FontWeight.Black, letterSpacing = 2.sp)
@@ -1432,7 +1415,7 @@ private fun AdjustmentDialog(
                         "cancel",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black.copy(alpha = 0.5f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
             }
@@ -1450,18 +1433,18 @@ private fun TransactionEditorDialog(
     var draft by remember(editorState) { mutableStateOf(editorState) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         title = {
             Text(
                 "EDIT TRANSACTION",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Black,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 when (draft.type) {
                     TransactionType.EXPENSE -> {
                         BrutalistWalletDropdown(
@@ -1521,12 +1504,12 @@ private fun TransactionEditorDialog(
         },
         confirmButton = {
             TextButton(onClick = { onSave(draft) }) {
-                Text("SAVE", fontWeight = FontWeight.Black, color = Color.Black)
+                Text("SAVE", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("CANCEL", fontWeight = FontWeight.Black, color = Color.Black)
+                Text("CANCEL", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
             }
         }
     )
@@ -1540,13 +1523,13 @@ private fun ConfirmDeleteDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         title = {
-            Text("DELETE?", fontWeight = FontWeight.Black, color = Color.Black)
+            Text("DELETE?", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
         },
         text = {
-            Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Black, color = Color.Black)
+            Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
@@ -1555,7 +1538,7 @@ private fun ConfirmDeleteDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("CANCEL", fontWeight = FontWeight.Black, color = Color.Black)
+                Text("CANCEL", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
             }
         }
     )
@@ -1652,22 +1635,22 @@ private fun BrutalistTextField(
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp,
-            color = Color.Black.copy(alpha = 0.6f)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
         TextField(
             value = value,
             onValueChange = onValueChange,
             textStyle = MaterialTheme.typography.bodyLarge.copy(
                 fontWeight = FontWeight.Black,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             ),
             keyboardOptions = if (keyboardType != null) KeyboardOptions(keyboardType = keyboardType) else KeyboardOptions.Default,
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Black,
-                unfocusedIndicatorColor = Color.Black,
-                cursorColor = Color.Black
+                focusedIndicatorColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurface,
+                cursorColor = MaterialTheme.colorScheme.onSurface
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -1690,7 +1673,7 @@ private fun BrutalistWalletDropdown(
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp,
-            color = Color.Black.copy(alpha = 0.6f)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
         ExposedDropdownMenuBox(
             expanded = expanded,
@@ -1703,14 +1686,14 @@ private fun BrutalistWalletDropdown(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 ),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Black,
-                    unfocusedIndicatorColor = Color.Black,
-                    cursorColor = Color.Black
+                    focusedIndicatorColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurface,
+                    cursorColor = MaterialTheme.colorScheme.onSurface
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1719,12 +1702,12 @@ private fun BrutalistWalletDropdown(
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                containerColor = Color.White,
-                border = BorderStroke(2.dp, Color.Black)
+                containerColor = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline)
             ) {
                 wallets.forEach { wallet ->
                     DropdownMenuItem(
-                        text = { Text(wallet.name, fontWeight = FontWeight.Black, color = Color.Black) },
+                        text = { Text(wallet.name, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) },
                         onClick = {
                             onSelected(wallet.id)
                             expanded = false
@@ -1750,24 +1733,24 @@ private fun BrutalistDateField(
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp,
-            color = Color.Black.copy(alpha = 0.6f)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
         Box {
             TextField(
                 value = value,
                 onValueChange = {},
                 readOnly = true,
-                placeholder = { Text("Select date", fontWeight = FontWeight.Black, color = Color.Black.copy(alpha = 0.3f)) },
+                placeholder = { Text("Select date", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)) },
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 ),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Black,
-                    unfocusedIndicatorColor = Color.Black,
-                    cursorColor = Color.Black
+                    focusedIndicatorColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurface,
+                    cursorColor = MaterialTheme.colorScheme.onSurface
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1793,12 +1776,12 @@ private fun BrutalistDateField(
                         showPicker = false
                     }
                 ) {
-                    Text("OK", fontWeight = FontWeight.Black, color = Color.Black)
+                    Text("OK", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPicker = false }) {
-                    Text("CANCEL", fontWeight = FontWeight.Black, color = Color.Black)
+                    Text("CANCEL", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         ) {

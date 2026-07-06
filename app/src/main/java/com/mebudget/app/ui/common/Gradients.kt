@@ -6,12 +6,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -70,6 +73,36 @@ fun GradientProgressBar(
                     cornerRadius = CornerRadius(size.height / 2f),
                     size = Size(size.width * animatedProgress, size.height)
                 )
+            }
+    )
+}
+
+@Composable
+fun BlockProgressBar(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+    trackColor: Color = Color.Unspecified,
+    segments: Int = 12
+) {
+    val resolvedColor = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.onSurface
+    val resolvedTrackColor = if (trackColor != Color.Unspecified) trackColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+    val filledSegments = (progress * segments).toInt().coerceIn(0, segments)
+
+    Box(
+        modifier = modifier
+            .clipToBounds()
+            .drawBehind {
+                val segmentWidth = size.width / segments
+                for (i in 0 until segments) {
+                    val left = segmentWidth * i
+                    val c = if (i < filledSegments) resolvedColor else resolvedTrackColor
+                    drawRect(
+                        color = c,
+                        topLeft = Offset(left, 0f),
+                        size = Size(segmentWidth - 2.dp.toPx(), size.height)
+                    )
+                }
             }
     )
 }

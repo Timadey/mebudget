@@ -61,7 +61,7 @@ fun MeBudgetTheme(content: @Composable () -> Unit) {
 @Composable
 fun BrutalistBudgetTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = BrutalistLightColors,
+        colorScheme = if (isSystemInDarkTheme()) BrutalistDarkColors else BrutalistLightColors,
         typography = Typography,
         content = content
     )

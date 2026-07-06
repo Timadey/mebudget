@@ -91,31 +91,32 @@ fun BudgetsScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 3.sp,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
 
                 item {
-                    Row(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        contentAlignment = Alignment.Center
                     ) {
                         Button(
                             onClick = { showCreateOptions = true },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(24.dp),
+                            shape = RoundedCornerShape(0.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Black,
-                                contentColor = Color.White
-                            )
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline),
+                            contentPadding = PaddingValues(horizontal = 32.dp, vertical = 12.dp)
                         ) {
                             Text(
                                 "+ CREATE BUDGET",
                                 fontWeight = FontWeight.Black,
-                                letterSpacing = 1.sp
+                                letterSpacing = 2.sp
                             )
                         }
                     }
@@ -187,21 +188,23 @@ fun BudgetsScreen(
     deletingBudgetId?.let { budgetId ->
         AlertDialog(
             onDismissRequest = { deletingBudgetId = null },
-            title = { Text("Delete Budget") },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            title = { Text("Delete Budget", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) },
             text = {
-                Text("Delete this budget? All wallets and transactions will be permanently removed.")
+                Text("Delete this budget? All wallets and transactions will be permanently removed.", color = MaterialTheme.colorScheme.onSurface)
             },
             confirmButton = {
                 TextButton(onClick = {
                     onDeleteBudget(budgetId)
                     deletingBudgetId = null
                 }) {
-                    Text("Delete")
+                    Text("DELETE", fontWeight = FontWeight.Black, color = Color(0xFFFF0000))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deletingBudgetId = null }) {
-                    Text("Cancel")
+                    Text("CANCEL", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         )
@@ -214,10 +217,10 @@ private fun TotalSummarySection(totalBalance: Long, activeWallets: Int, privacyM
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(0.dp),
-        border = BorderStroke(4.dp, Color.Black)
+        border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -233,29 +236,29 @@ private fun TotalSummarySection(totalBalance: Long, activeWallets: Int, privacyM
                         text = "$activeWallets",
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "active wallets",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 Text(
                     text = maskedAmount(totalBalance, privacyModeEnabled),
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            HorizontalDivider(color = Color.Black, thickness = 1.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface, thickness = 1.dp)
             Text(
                 text = "ACROSS ALL BUDGETS",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.sp,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -276,9 +279,9 @@ private fun BudgetSummaryCard(
             .padding(horizontal = 20.dp)
             .clickable(onClick = onOpen),
         shape = RoundedCornerShape(0.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(4.dp, Color.Black)
+        border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -294,13 +297,13 @@ private fun BudgetSummaryCard(
                         text = budget.name.uppercase(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = budget.formatDateRange(),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
                 val isOverspent = budget.totalBalance < 0
@@ -329,14 +332,14 @@ private fun BudgetSummaryCard(
                         text = "${budget.activeWalletCount} active",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
                 Text(
                     text = maskedAmount(budget.totalBalance, privacyModeEnabled),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -352,7 +355,7 @@ private fun BudgetCreationChoiceDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         title = { Text("Create Budget") },
         text = {
@@ -367,20 +370,20 @@ private fun BudgetCreationChoiceDialog(
                         .fillMaxWidth()
                         .clickable(onClick = onCreateBlank),
                     shape = RoundedCornerShape(0.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    border = BorderStroke(4.dp, Color.Black)
+                    border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text("START BLANK", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.Black)
+                        Text("START BLANK", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                         Text(
                             "Create a fresh budget and add wallets yourself.",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Black,
-                            color = Color.Black.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -391,19 +394,19 @@ private fun BudgetCreationChoiceDialog(
                     shape = RoundedCornerShape(0.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (hasTemplates) {
-                            Color.White
+                            MaterialTheme.colorScheme.surface
                         } else {
-                            Color.White.copy(alpha = 0.45f)
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
                         }
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    border = BorderStroke(4.dp, Color.Black)
+                    border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text("USE TEMPLATE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.Black)
+                        Text("USE TEMPLATE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                         Text(
                             if (hasTemplates) {
                                 "Copy wallet names and planned amounts from an existing budget."
@@ -412,7 +415,7 @@ private fun BudgetCreationChoiceDialog(
                             },
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Black,
-                            color = Color.Black.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 }

@@ -1,5 +1,6 @@
 package com.mebudget.app.ui.theme
 
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
@@ -41,4 +42,25 @@ val BrutalistLightColors = lightColorScheme(
     onErrorContainer = Color(0xFFCC0000),
     outline = Color.Black,
     outlineVariant = Color.Black
+)
+
+val BrutalistDarkColors = darkColorScheme(
+    primary = Color.White,
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF1A1A1A),
+    onPrimaryContainer = Color.White,
+    secondary = Color.White,
+    onSecondary = Color.Black,
+    background = Color.Black,
+    onBackground = Color.White,
+    surface = Color(0xFF1A1A1A),
+    onSurface = Color.White,
+    surfaceVariant = Color(0xFF2A2A2A),
+    onSurfaceVariant = Color.White,
+    error = Color(0xFFFF4444),
+    errorContainer = Color(0xFF442222),
+    onError = Color.White,
+    onErrorContainer = Color(0xFFFFAAAA),
+    outline = Color.White,
+    outlineVariant = Color.White
 )
