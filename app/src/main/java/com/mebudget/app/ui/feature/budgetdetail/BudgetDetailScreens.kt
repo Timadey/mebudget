@@ -42,6 +42,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 import com.mebudget.app.ui.common.BlockProgressBar
+import com.mebudget.app.ui.common.offsetShadow
+import com.mebudget.app.ui.common.TransactionTypeBadge
+import com.mebudget.app.ui.common.SectionHeader
+import com.mebudget.app.ui.theme.AccentBlue
 import com.mebudget.app.ui.theme.BrutalistBudgetTheme
 import java.time.LocalDate
 
@@ -430,7 +434,7 @@ private fun BudgetOverviewScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 72.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
                     BudgetStatusCard(detail = detail, privacyModeEnabled = privacyModeEnabled)
@@ -469,7 +473,7 @@ private fun BudgetOverviewScreen(
                                         containerColor = if (showArchived) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                                         contentColor = if (showArchived) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                                     ),
-                                    border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline),
+                                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                                 ) {
                                     Text(if (showArchived) "Archived visible" else "Archived hidden", fontWeight = FontWeight.Black)
@@ -481,7 +485,7 @@ private fun BudgetOverviewScreen(
                                         containerColor = MaterialTheme.colorScheme.primary,
                                         contentColor = MaterialTheme.colorScheme.onPrimary
                                     ),
-                                    border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline),
+                                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                                 ) {
                                     Text("+ Add Wallet", fontWeight = FontWeight.Black)
@@ -590,16 +594,18 @@ private fun BudgetSectionSwitcher(
                 onClick = { onSectionSelected(section) },
                 shape = RoundedCornerShape(0.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                     contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                 ),
-                border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    section.label.uppercase(),
+                    text = section.label.uppercase(),
                     fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
+                    letterSpacing = 1.sp,
+                    style = MaterialTheme.typography.labelLarge
                 )
             }
         }
@@ -619,7 +625,7 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(0.dp),
-        border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline)
+        border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
@@ -659,6 +665,7 @@ private fun BudgetStatusCard(detail: BudgetDetail, privacyModeEnabled: Boolean) 
             }
             BlockProgressBar(
                 progress = progress,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
@@ -758,7 +765,7 @@ private fun WalletDetailScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 72.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 WalletSummaryPanel(
@@ -891,7 +898,7 @@ private fun WalletSummaryPanel(
         shape = RoundedCornerShape(0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline)
+        border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -927,6 +934,7 @@ private fun WalletSummaryPanel(
             }
             BlockProgressBar(
                 progress = progress,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
@@ -954,11 +962,12 @@ private fun WalletCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
+            .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline)
             .clickable(onClick = onOpen),
         shape = RoundedCornerShape(0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(4.dp, MaterialTheme.colorScheme.outline)
+        border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
@@ -997,6 +1006,7 @@ private fun WalletCard(
             }
             BlockProgressBar(
                 progress = progress,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp)
