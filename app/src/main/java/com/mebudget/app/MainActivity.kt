@@ -14,14 +14,14 @@ import com.mebudget.app.ui.BudgetsViewModelFactory
 import com.mebudget.app.ui.MeBudgetApp
 import com.mebudget.app.ui.QuickSpendViewModel
 import com.mebudget.app.ui.QuickSpendViewModelFactory
-import com.mebudget.app.ui.theme.MeBudgetTheme
+import com.mebudget.app.ui.theme.BrutalistBudgetTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MeBudgetTheme {
+            BrutalistBudgetTheme {
                 val appViewModel: AppViewModel = viewModel(
                     factory = AppViewModelFactory(application)
                 )
