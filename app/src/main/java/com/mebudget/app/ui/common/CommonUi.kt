@@ -1,16 +1,18 @@
 package com.mebudget.app.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Visibility
@@ -25,13 +27,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.BorderStroke
 import com.mebudget.app.data.BudgetSummary
 import com.mebudget.app.data.NegativeBalanceRule
 import com.mebudget.app.data.WalletSummary
 import com.mebudget.app.data.formatAmount
+import com.mebudget.app.ui.common.EmptyStateIllustration
+import com.mebudget.app.ui.common.offsetShadow
 import java.time.LocalDate
 
 @Composable
@@ -60,41 +64,54 @@ fun EmptyState(
     onAction: (() -> Unit)? = null
 ) {
     Card(
-        modifier = Modifier.padding(horizontal = 20.dp),
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
+            .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
         shape = RoundedCornerShape(0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(4.dp, Color.Black)
+        border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            EmptyStateIllustration(
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Text(
                 text = title.uppercase(),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Black,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Black,
-                color = Color.Black.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
             if (actionLabel != null && onAction != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Button(
                     onClick = onAction,
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(0.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Black,
-                        contentColor = Color.White
-                    )
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
                 ) {
-                    Text(actionLabel.uppercase(), fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text(
+                        actionLabel.uppercase(),
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp
+                    )
                 }
             }
         }
@@ -120,11 +137,15 @@ fun PrivacyModeBanner(
     onTogglePrivacyMode: (() -> Unit)? = null
 ) {
     Card(
-        modifier = modifier.padding(horizontal = 20.dp),
-        shape = RoundedCornerShape(16.dp),
+        modifier = modifier
+            .padding(horizontal = 20.dp)
+            .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+        shape = RoundedCornerShape(0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
-        )
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
     ) {
         Row(
             modifier = Modifier
@@ -135,9 +156,10 @@ fun PrivacyModeBanner(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "Privacy mode is on",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    text = "PRIVACY MODE ON",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Amounts are hidden across the app.",
@@ -146,8 +168,17 @@ fun PrivacyModeBanner(
                 )
             }
             if (onTogglePrivacyMode != null) {
-                TextButton(onClick = onTogglePrivacyMode) {
-                    Text("Show")
+                Button(
+                    onClick = onTogglePrivacyMode,
+                    shape = RoundedCornerShape(0.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    Text("SHOW", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
             }
         }
@@ -239,7 +270,16 @@ fun BudgetDialog(
     var draft by remember(initial) { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        title = {
+            Text(
+                title.uppercase(),
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -284,13 +324,21 @@ fun BudgetDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(draft) }) {
-                Text(saveLabel)
+            Button(
+                onClick = { onSave(draft) },
+                shape = RoundedCornerShape(0.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline)
+            ) {
+                Text(saveLabel.uppercase(), fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("CANCEL", fontWeight = FontWeight.Black)
             }
         }
     )
