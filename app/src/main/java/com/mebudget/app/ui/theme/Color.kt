@@ -4,6 +4,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
+// Legacy earthy palette (kept for gradient compatibility)
 val Canvas = Color(0xFFF6F1E8)
 val Shell = Color(0xFFFFFBF5)
 val Sand = Color(0xFFE8DDCE)
@@ -18,13 +19,23 @@ val NightCanvas = Color(0xFF171614)
 val NightSurface = Color(0xFF22201D)
 val NightSand = Color(0xFF3B3731)
 
-val Success = Color(0xFF2F7D5A)
+// Neo-brutalist accent colors
+val AccentBlue = Color(0xFF0055FF)
+val AccentBlueDark = Color(0xFF3388FF)
+val MutedLight = Color(0xFF666666)
+val MutedDark = Color(0xFF999999)
+
+// Semantic status colors
+val Success = Color(0xFF00CC66)
+val SuccessDark = Color(0xFF00FF88)
 val Info = Lagoon
-val Warning = Color(0xFFC48A1D)
-val Overspend = Color(0xFFB24733)
+val Warning = Color(0xFFFFB800)
+val WarningDark = Color(0xFFFFD633)
+val Overspend = Color(0xFFFF0033)
+val OverspendDark = Color(0xFFFF4466)
 
 val BrutalistLightColors = lightColorScheme(
-    primary = Color.Black,
+    primary = AccentBlue,
     onPrimary = Color.White,
     primaryContainer = Color.White,
     onPrimaryContainer = Color.Black,
@@ -35,8 +46,8 @@ val BrutalistLightColors = lightColorScheme(
     surface = Color.White,
     onSurface = Color.Black,
     surfaceVariant = Color(0xFFF5F5F5),
-    onSurfaceVariant = Color.Black,
-    error = Color(0xFFFF0000),
+    onSurfaceVariant = MutedLight,
+    error = Overspend,
     errorContainer = Color(0xFFFFF0F0),
     onError = Color.White,
     onErrorContainer = Color(0xFFCC0000),
@@ -45,7 +56,7 @@ val BrutalistLightColors = lightColorScheme(
 )
 
 val BrutalistDarkColors = darkColorScheme(
-    primary = Color.White,
+    primary = AccentBlueDark,
     onPrimary = Color.Black,
     primaryContainer = Color(0xFF1A1A1A),
     onPrimaryContainer = Color.White,
@@ -56,8 +67,8 @@ val BrutalistDarkColors = darkColorScheme(
     surface = Color(0xFF1A1A1A),
     onSurface = Color.White,
     surfaceVariant = Color(0xFF2A2A2A),
-    onSurfaceVariant = Color.White,
-    error = Color(0xFFFF4444),
+    onSurfaceVariant = MutedDark,
+    error = OverspendDark,
     errorContainer = Color(0xFF442222),
     onError = Color.White,
     onErrorContainer = Color(0xFFFFAAAA),
