@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.mebudget.app.ui.theme.Moss
 import com.mebudget.app.ui.theme.Overspend
+import com.mebudget.app.ui.theme.AccentBlue
 import com.mebudget.app.ui.theme.Pine
 import com.mebudget.app.ui.theme.Rust
 import com.mebudget.app.ui.theme.Warning
@@ -38,8 +39,8 @@ fun progressBarBrush(progress: Float, isOverspent: Boolean): Brush {
             gradientEnd = Rust
         }
         else -> {
-            gradientStart = Pine
-            gradientEnd = Moss
+            gradientStart = AccentBlue
+            gradientEnd = AccentBlue.copy(alpha = 0.7f)
         }
     }
     return Brush.horizontalGradient(listOf(gradientStart, gradientEnd))
@@ -85,7 +86,7 @@ fun BlockProgressBar(
     trackColor: Color = Color.Unspecified,
     segments: Int = 12
 ) {
-    val resolvedColor = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.onSurface
+    val resolvedColor = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.primary
     val resolvedTrackColor = if (trackColor != Color.Unspecified) trackColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
     val filledSegments = (progress * segments).toInt().coerceIn(0, segments)
 
