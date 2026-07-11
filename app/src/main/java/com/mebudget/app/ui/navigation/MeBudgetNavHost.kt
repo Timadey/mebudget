@@ -39,6 +39,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.mebudget.app.data.BudgetEntity
 import com.mebudget.app.ui.navigation.MeBudgetRoute
+import com.mebudget.app.ui.theme.AccentBlue
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,7 +118,9 @@ fun MeBudgetNavHost(
         },
         bottomBar = {
             if (currentRoute in topLevelRoutes) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.background
+                ) {
                     NavigationBarItem(
                         selected = currentRoute == MeBudgetRoute.budgets,
                         onClick = {
@@ -139,7 +142,17 @@ fun MeBudgetNavHost(
                                 }
                             )
                         },
-                        label = null
+                        label = {
+                            Text(
+                                text = "Budgets",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (currentRoute == MeBudgetRoute.budgets) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
                     )
                     NavigationBarItem(
                         selected = currentRoute == MeBudgetRoute.globalInsights,
@@ -162,7 +175,17 @@ fun MeBudgetNavHost(
                                 }
                             )
                         },
-                        label = null
+                        label = {
+                            Text(
+                                text = "Insights",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (currentRoute == MeBudgetRoute.globalInsights) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
                     )
                 }
             }
