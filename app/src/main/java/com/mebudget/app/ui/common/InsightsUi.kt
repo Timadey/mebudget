@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mebudget.app.data.BudgetInsightSummary
 import com.mebudget.app.data.InsightObservation
+import com.mebudget.app.ui.common.offsetShadow
+import com.mebudget.app.ui.common.SectionHeader
 
 @Composable
 fun BudgetInsightSection(
@@ -198,7 +200,8 @@ fun InsightDetailCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(0.dp),
@@ -208,10 +211,9 @@ fun InsightDetailCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Black
+            SectionHeader(
+                title = title,
+                color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = subtitle,

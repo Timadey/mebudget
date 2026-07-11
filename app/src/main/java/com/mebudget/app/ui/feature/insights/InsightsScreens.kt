@@ -1,5 +1,6 @@
 package com.mebudget.app.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,32 +13,32 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.PriorityHigh
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.mebudget.app.ui.common.GradientProgressBar
+import androidx.compose.ui.unit.sp
+import com.mebudget.app.ui.common.BlockProgressBar
+import com.mebudget.app.ui.common.offsetShadow
+import com.mebudget.app.ui.common.SectionHeader
+import com.mebudget.app.ui.common.BudgetStatusIndicator
+import com.mebudget.app.ui.common.BudgetStatus
+import com.mebudget.app.ui.theme.BrutalistBudgetTheme
+import com.mebudget.app.ui.theme.AccentBlue
+import com.mebudget.app.ui.theme.Success
+import com.mebudget.app.ui.theme.Warning
+import com.mebudget.app.ui.theme.Overspend
 import com.mebudget.app.data.BudgetDetail
 import com.mebudget.app.data.BudgetInsightSummary
 import com.mebudget.app.data.GlobalInsightSummary
@@ -60,42 +61,47 @@ fun BudgetInsightsScreen(
 ) {
     val insights = detail.insights
 
-    Scaffold(
-        topBar = {
-            MediumTopAppBar(
-                title = {
-                    Column {
-                        Text("Budget Insights", style = MaterialTheme.typography.titleLarge)
-                        Text(
-                            detail.budget.name,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    PrivacyToggleButton(
-                        privacyModeEnabled = privacyModeEnabled,
-                        onTogglePrivacyMode = onTogglePrivacyMode
+    BrutalistBudgetTheme {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onBack) {
+                    Text("[<]", fontWeight = FontWeight.Black, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Budget Insights",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    Text(
+                        text = detail.budget.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                PrivacyToggleButton(
+                    privacyModeEnabled = privacyModeEnabled,
+                    onTogglePrivacyMode = onTogglePrivacyMode
                 )
+            }
+
+            HorizontalDivider(
+                thickness = 2.dp,
+                color = MaterialTheme.colorScheme.onSurface
             )
-        }
-    ) { padding ->
+
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+                .fillMaxSize(),
             contentPadding = PaddingValues(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (privacyModeEnabled) {
                 item { PrivacyModeBanner(onTogglePrivacyMode = onTogglePrivacyMode) }
@@ -213,6 +219,7 @@ fun BudgetInsightsScreen(
         }
     }
 }
+}
 
 @Composable
 private fun BudgetInsightActionCard(
@@ -276,10 +283,12 @@ private fun BudgetInsightHeroCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
+        border = BorderStroke(4.dp, MaterialTheme.colorScheme.onSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -294,7 +303,8 @@ private fun BudgetInsightHeroCard(
                     Text(
                         text = "Budget pulse",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Text(
                         text = stressLabel,
@@ -308,11 +318,11 @@ private fun BudgetInsightHeroCard(
                             "No wallets ended negative in this cycle."
                         },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
                 SignalBadge(
-                    label = stressLabel,
                     tone = when {
                         insights.overspentWallets.isNotEmpty() -> SignalTone.Danger
                         spentRatio > 0.9f -> SignalTone.Warning
@@ -329,20 +339,20 @@ private fun BudgetInsightHeroCard(
                     Text(
                         text = "Expense pressure",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Text(
                         text = if (privacyModeEnabled) "••••" else "${(spentRatio * 100).toInt()}%",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Black
                     )
                 }
-                GradientProgressBar(
+                BlockProgressBar(
                     progress = spentRatio.coerceIn(0f, 1f),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(10.dp),
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        .height(10.dp)
                 )
             }
 
@@ -398,12 +408,17 @@ private fun WalletHealthRow(
         else -> SignalTone.Good
     }
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -414,22 +429,16 @@ private fun WalletHealthRow(
                     Text(
                         text = insight.walletName,
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "Ending ${maskedAmount(insight.endingBalance, privacyModeEnabled)}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
-                SignalBadge(
-                    label = when (tone) {
-                        SignalTone.Good -> "Stable"
-                        SignalTone.Warning -> "Watch"
-                        SignalTone.Danger -> "At risk"
-                    },
-                    tone = tone
-                )
+                SignalBadge(tone = tone)
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -440,20 +449,20 @@ private fun WalletHealthRow(
                     Text(
                         text = "Spent vs plan",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Text(
                         text = "${maskedAmount(insight.spentTotal, privacyModeEnabled)} / ${maskedAmount(insight.plannedAmount, privacyModeEnabled)}",
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Black
                     )
                 }
-                GradientProgressBar(
+                BlockProgressBar(
                     progress = spentRatio.coerceIn(0f, 1f),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(8.dp),
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        .height(8.dp)
                 )
             }
 
@@ -489,51 +498,56 @@ fun GlobalInsightsScreen(
     showBack: Boolean = true,
     onBack: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            MediumTopAppBar(
-                title = {
-                    Column {
-                        Text("Insights", style = MaterialTheme.typography.titleLarge)
-                        Text(
-                            "Patterns across all budgets",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                navigationIcon = if (showBack) {
-                    {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
+    BrutalistBudgetTheme {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showBack) {
+                    TextButton(onClick = onBack) {
+                        Text("[<]", fontWeight = FontWeight.Black, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
                     }
                 } else {
-                    {}
-                },
-                actions = {
-                    PrivacyToggleButton(
-                        privacyModeEnabled = privacyModeEnabled,
-                        onTogglePrivacyMode = onTogglePrivacyMode
+                    Spacer(modifier = Modifier.size(48.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Insights",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    Text(
+                        text = "Patterns across all budgets",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                PrivacyToggleButton(
+                    privacyModeEnabled = privacyModeEnabled,
+                    onTogglePrivacyMode = onTogglePrivacyMode
                 )
+            }
+
+            HorizontalDivider(
+                thickness = 2.dp,
+                color = MaterialTheme.colorScheme.onSurface
             )
-        }
-    ) { padding ->
+
         if (insights == null) {
             LoadingState()
-            return@Scaffold
+            return@Column
         }
 
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+                .fillMaxSize(),
             contentPadding = PaddingValues(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (privacyModeEnabled) {
                 item { PrivacyModeBanner(onTogglePrivacyMode = onTogglePrivacyMode) }
@@ -606,6 +620,7 @@ fun GlobalInsightsScreen(
         }
     }
 }
+}
 
 @Composable
 private fun GlobalInsightActionCard(
@@ -651,10 +666,12 @@ private fun GlobalInsightHeroCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(0.dp),
+        border = BorderStroke(4.dp, MaterialTheme.colorScheme.onSurface)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -669,7 +686,8 @@ private fun GlobalInsightHeroCard(
                     Text(
                         text = "Pattern pulse",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Text(
                         text = insights.mostUnderplannedWallet?.displayName ?: "No strong pattern yet",
@@ -681,11 +699,11 @@ private fun GlobalInsightHeroCard(
                             "Most often rescued across ${it.budgetsAppearedIn} budgets."
                         } ?: "As more budgets are tracked, recurring signals will strengthen here.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
                 SignalBadge(
-                    label = if (insights.mostUnderplannedWallet != null) "Recurring issue" else "Emerging",
                     tone = if (insights.mostUnderplannedWallet != null) SignalTone.Warning else SignalTone.Good
                 )
             }
@@ -751,59 +769,65 @@ private fun PriorityInsightCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+        shape = RoundedCornerShape(0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(4.dp, MaterialTheme.colorScheme.onSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Default.PriorityHigh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            Text(
+                text = "[!] $title",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Text(
                 text = headline,
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Black
             )
             Text(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }
 }
 
 @Composable
-private fun SignalBadge(label: String, tone: SignalTone) {
-    val colors = when (tone) {
-        SignalTone.Good -> AssistChipDefaults.assistChipColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            labelColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-        SignalTone.Warning -> AssistChipDefaults.assistChipColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-            labelColor = MaterialTheme.colorScheme.onTertiaryContainer
-        )
-        SignalTone.Danger -> AssistChipDefaults.assistChipColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            labelColor = MaterialTheme.colorScheme.onErrorContainer
+private fun SignalBadge(tone: SignalTone) {
+    val status = when (tone) {
+        SignalTone.Good -> BudgetStatus.OnTrack
+        SignalTone.Warning -> BudgetStatus.Warning
+        SignalTone.Danger -> BudgetStatus.Overspent
+    }
+    val text = when (tone) {
+        SignalTone.Good -> "GOOD"
+        SignalTone.Warning -> "WARN"
+        SignalTone.Danger -> "DANGER"
+    }
+    val color = when (tone) {
+        SignalTone.Good -> Success
+        SignalTone.Warning -> Warning
+        SignalTone.Danger -> Overspend
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        BudgetStatusIndicator(status = status)
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Black,
+            color = color
         )
     }
-    AssistChip(
-        onClick = {},
-        label = { Text(label) },
-        colors = colors
-    )
 }
 
 @Composable
@@ -840,8 +864,13 @@ private fun TransferRouteRow(
     supporting: String
 ) {
     Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f))
+        modifier = Modifier
+            .fillMaxWidth()
+            .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+        shape = RoundedCornerShape(0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -858,27 +887,10 @@ private fun TransferRouteRow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = sourceName,
+                        text = "$sourceName → $destinationName",
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                .size(16.dp)
-                        )
-                    }
-                    Text(
-                        text = destinationName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 Text(
@@ -908,9 +920,14 @@ private fun WalletHistoryVisualRow(
         else -> SignalTone.Good
     }
     Card(
-        modifier = Modifier.clickable(onClick = onOpen),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f))
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen)
+            .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+        shape = RoundedCornerShape(0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -925,22 +942,16 @@ private fun WalletHistoryVisualRow(
                     Text(
                         text = insight.displayName,
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "${insight.budgetsAppearedIn} budgets tracked",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
-                SignalBadge(
-                    label = when (tone) {
-                        SignalTone.Good -> "Stable"
-                        SignalTone.Warning -> "Watch"
-                        SignalTone.Danger -> "At risk"
-                    },
-                    tone = tone
-                )
+                SignalBadge(tone = tone)
             }
 
             Row(
@@ -988,42 +999,47 @@ fun WalletHistoryDetailScreen(
     onTogglePrivacyMode: () -> Unit,
     onBack: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            MediumTopAppBar(
-                title = {
-                    Column {
-                        Text(insight.displayName, style = MaterialTheme.typography.titleLarge)
-                        Text(
-                            "Wallet history",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    PrivacyToggleButton(
-                        privacyModeEnabled = privacyModeEnabled,
-                        onTogglePrivacyMode = onTogglePrivacyMode
+    BrutalistBudgetTheme {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onBack) {
+                    Text("[<]", fontWeight = FontWeight.Black, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = insight.displayName,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    Text(
+                        text = "Wallet history",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                PrivacyToggleButton(
+                    privacyModeEnabled = privacyModeEnabled,
+                    onTogglePrivacyMode = onTogglePrivacyMode
                 )
+            }
+
+            HorizontalDivider(
+                thickness = 2.dp,
+                color = MaterialTheme.colorScheme.onSurface
             )
-        }
-    ) { padding ->
+
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+                .fillMaxSize(),
             contentPadding = PaddingValues(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 InsightDetailCard(
@@ -1103,6 +1119,7 @@ fun WalletHistoryDetailScreen(
         }
     }
 }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1112,45 +1129,47 @@ fun TransferPatternDetailScreen(
     onTogglePrivacyMode: () -> Unit,
     onBack: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            MediumTopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            "${insight.sourceDisplayName} -> ${insight.destinationDisplayName}",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Text(
-                            "Transfer path history",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    PrivacyToggleButton(
-                        privacyModeEnabled = privacyModeEnabled,
-                        onTogglePrivacyMode = onTogglePrivacyMode
+    BrutalistBudgetTheme {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onBack) {
+                    Text("[<]", fontWeight = FontWeight.Black, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "${insight.sourceDisplayName} → ${insight.destinationDisplayName}",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    Text(
+                        text = "Transfer path history",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                PrivacyToggleButton(
+                    privacyModeEnabled = privacyModeEnabled,
+                    onTogglePrivacyMode = onTogglePrivacyMode
                 )
+            }
+
+            HorizontalDivider(
+                thickness = 2.dp,
+                color = MaterialTheme.colorScheme.onSurface
             )
-        }
-    ) { padding ->
+
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+                .fillMaxSize(),
             contentPadding = PaddingValues(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 InsightDetailCard(
@@ -1185,4 +1204,5 @@ fun TransferPatternDetailScreen(
             }
         }
     }
+}
 }
