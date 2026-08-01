@@ -39,17 +39,17 @@ fun createTransferTransaction(
     )
 }
 
-fun createAdjustmentTransaction(
+fun createCreditTransaction(
     budgetId: Long,
     walletId: Long,
-    signedAmount: Long,
+    amount: Long,
     dateEpochDay: Long,
     note: String?
 ): TransactionEntity {
     return TransactionEntity(
         budgetId = budgetId,
-        type = TransactionType.ADJUSTMENT,
-        amount = signedAmount,
+        type = TransactionType.CREDIT,
+        amount = amount,
         dateEpochDay = dateEpochDay,
         sourceWalletId = walletId,
         note = note.normalizedNote()

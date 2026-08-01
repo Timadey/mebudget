@@ -33,9 +33,9 @@ data class TransferDraft(
     val note: String = ""
 )
 
-data class AdjustmentDraft(
+data class CreditDraft(
     val walletId: Long? = null,
-    val signedAmount: String = "",
+    val amount: String = "",
     val date: String = LocalDate.now().toString(),
     val note: String = ""
 )

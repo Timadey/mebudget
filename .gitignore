@@ -8,3 +8,8 @@
 **/build/
 .gradle-user-home
 
+
+# Superpowers SDD workspace
+.superpowers/
+.opencode/
+docs/

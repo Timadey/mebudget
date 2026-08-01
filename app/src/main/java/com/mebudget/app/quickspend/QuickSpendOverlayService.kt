@@ -1,5 +1,8 @@
 package com.mebudget.app.quickspend
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.graphics.Color
@@ -62,6 +65,39 @@ class QuickSpendOverlayService : Service() {
         repository = database.run {
             BudgetRepository(budgetDao(), walletDao(), transactionDao())
         }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                "Quick Spend",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Shows when Quick Spend overlay is active"
+                setShowBadge(false)
+            }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+
+        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setContentTitle("Quick Spend")
+                .setContentText("Overlay is running")
+                .setSmallIcon(android.R.drawable.ic_menu_share)
+                .setOngoing(true)
+                .build()
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this)
+                .setContentTitle("Quick Spend")
+                .setContentText("Overlay is running")
+                .setSmallIcon(android.R.drawable.ic_menu_share)
+                .setOngoing(true)
+                .build()
+        }
+
+        startForeground(NOTIFICATION_ID, notification)
+
         handler.post(pollRunnable)
     }
 
@@ -101,17 +137,19 @@ class QuickSpendOverlayService : Service() {
             y = DEFAULT_Y
         }
         val button = TextView(this).apply {
-            text = "₦ Budget"
-            textSize = 14f
+            text = "₦ BUDGET"
+            textSize = 16f
             setTextColor(Color.WHITE)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setPadding(24, 14, 24, 14)
+            setPadding(28, 16, 28, 16)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 48f
-                setColor(Color.rgb(32, 111, 96))
+                cornerRadius = 0f
+                setColor(Color.rgb(0, 85, 255))
+                setStroke(6, Color.BLACK)
             }
-            elevation = 8f
+            elevation = 10f
             setOnClickListener { showMiniForm() }
         }
         attachDragHandler(button, params)
@@ -147,16 +185,56 @@ class QuickSpendOverlayService : Service() {
             y = 0
         }
         val amountInput = EditText(this).apply {
-            hint = "Amount"
+            hint = "AMOUNT"
             inputType = InputType.TYPE_CLASS_NUMBER
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            textSize = 16f
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 0f
+                setColor(Color.WHITE)
+                setStroke(4, Color.BLACK)
+            }
+            setPadding(20, 16, 20, 16)
         }
         val noteInput = EditText(this).apply {
-            hint = "Note"
+            hint = "NOTE"
             inputType = InputType.TYPE_CLASS_TEXT
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            textSize = 16f
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 0f
+                setColor(Color.WHITE)
+                setStroke(4, Color.BLACK)
+            }
+            setPadding(20, 16, 20, 16)
         }
         val walletSpinner = Spinner(this)
-        val saveButton = Button(this).apply { text = "Save" }
-        val cancelButton = Button(this).apply { text = "Cancel" }
+        val saveButton = Button(this).apply {
+            text = "SAVE"
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 0f
+                setColor(Color.rgb(0, 85, 255))
+                setStroke(6, Color.BLACK)
+            }
+            setPadding(20, 16, 20, 16)
+        }
+        val cancelButton = Button(this).apply {
+            text = "CANCEL"
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(Color.BLACK)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 0f
+                setColor(Color.WHITE)
+                setStroke(6, Color.BLACK)
+            }
+            setPadding(20, 16, 20, 16)
+        }
         val statusText = TextView(this).apply { text = "Loading wallets..." }
         var activeWallets: List<WalletEntity> = emptyList()
 
@@ -168,14 +246,16 @@ class QuickSpendOverlayService : Service() {
             setPadding(28, 24, 28, 24)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 24f
+                cornerRadius = 0f
                 setColor(Color.WHITE)
+                setStroke(6, Color.BLACK)
             }
             elevation = 12f
         }
         val titleText = TextView(this).apply {
-            text = "Record Spend"
+            text = "RECORD SPEND"
             textSize = 18f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(22, 28, 36))
         }
         panel.apply {
@@ -336,5 +416,7 @@ class QuickSpendOverlayService : Service() {
         const val POLL_INTERVAL_MILLIS = 1_000L
         const val DEFAULT_X = 24
         const val DEFAULT_Y = 240
+        const val NOTIFICATION_CHANNEL_ID = "quick_spend_overlay"
+        const val NOTIFICATION_ID = 1001
     }
 }

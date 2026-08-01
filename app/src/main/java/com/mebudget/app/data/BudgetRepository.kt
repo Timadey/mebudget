@@ -4,7 +4,7 @@ import com.mebudget.app.domain.validateBudgetDefinition
 import com.mebudget.app.domain.validateBudgetUpdate
 import com.mebudget.app.domain.validateDuplicateBudgetName
 import com.mebudget.app.domain.TransactionValidationContext
-import com.mebudget.app.domain.createAdjustmentTransaction
+import com.mebudget.app.domain.createCreditTransaction
 import com.mebudget.app.domain.createExpenseTransaction
 import com.mebudget.app.domain.createTransferTransaction
 import com.mebudget.app.domain.planWalletArchive
@@ -179,19 +179,19 @@ class BudgetRepository(
         ) { transactionDao.insert(it) }
     }
 
-    suspend fun addAdjustment(
+    suspend fun addCredit(
         budgetId: Long,
         walletId: Long,
-        signedAmount: Long,
+        amount: Long,
         dateEpochDay: Long,
         note: String?
     ): Result<Unit> {
         return validateAndPersist(
             budgetId = budgetId,
-            draft = createAdjustmentTransaction(
+            draft = createCreditTransaction(
                 budgetId = budgetId,
                 walletId = walletId,
-                signedAmount = signedAmount,
+                amount = amount,
                 dateEpochDay = dateEpochDay,
                 note = note
             )
@@ -254,11 +254,8 @@ class BudgetRepository(
         replacingId: Long? = null,
         persist: suspend (TransactionEntity) -> Unit
     ): Result<Unit> {
-        if (draft.type != TransactionType.ADJUSTMENT && draft.amount <= 0) {
+        if (draft.amount <= 0) {
             return Result.failure(IllegalArgumentException("Amount must be greater than zero."))
-        }
-        if (draft.type == TransactionType.ADJUSTMENT && draft.amount == 0L) {
-            return Result.failure(IllegalArgumentException("Adjustment cannot be zero."))
         }
 
         val budget = budgetDao.getBudget(budgetId)

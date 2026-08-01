@@ -68,7 +68,7 @@ fun MeBudgetNavHost(
     onMoveWallet: (Long, Int) -> Unit,
     onAddExpense: (Long, ExpenseDraft) -> Unit,
     onAddTransfer: (Long, TransferDraft) -> Unit,
-    onAddAdjustment: (Long, AdjustmentDraft) -> Unit,
+    onAddCredit: (Long, CreditDraft) -> Unit,
     onUpdateTransaction: (TransactionEditorState) -> Unit,
     onDeleteTransaction: (Long) -> Unit,
     onDeleteBudget: (Long) -> Unit,
@@ -321,7 +321,7 @@ fun MeBudgetNavHost(
                             onMoveWallet = onMoveWallet,
                             onAddExpense = onAddExpense,
                             onAddTransfer = onAddTransfer,
-                            onAddAdjustment = onAddAdjustment,
+                            onAddCredit = onAddCredit,
                             onUpdateTransaction = onUpdateTransaction,
                             onDeleteTransaction = onDeleteTransaction,
                             onDeleteBudget = { budgetId ->
@@ -383,7 +383,7 @@ fun MeBudgetNavHost(
                             onMoveWallet = onMoveWallet,
                             onAddExpense = onAddExpense,
                             onAddTransfer = onAddTransfer,
-                            onAddAdjustment = onAddAdjustment,
+                            onAddCredit = onAddCredit,
                             onUpdateTransaction = onUpdateTransaction,
                             onDeleteTransaction = onDeleteTransaction,
                             onDeleteWallet = onDeleteWallet

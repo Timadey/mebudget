@@ -130,13 +130,13 @@ class BudgetDetailViewModel(application: Application) : ViewModel() {
         }
     }
 
-    fun addAdjustment(budgetId: Long, draft: AdjustmentDraft) {
+    fun addCredit(budgetId: Long, draft: CreditDraft) {
         val walletId = draft.walletId ?: return emitError(IllegalArgumentException("Choose a wallet."))
         viewModelScope.launch {
-            repository.addAdjustment(
+            repository.addCredit(
                 budgetId = budgetId,
                 walletId = walletId,
-                signedAmount = draft.signedAmount.parseSignedAmount(),
+                amount = draft.amount.parseAmount(),
                 dateEpochDay = draft.date.parseRequiredDate(),
                 note = draft.note
             ).onFailure(::emitError)
@@ -147,7 +147,7 @@ class BudgetDetailViewModel(application: Application) : ViewModel() {
         viewModelScope.launch {
             repository.updateTransaction(
                 transactionId = editorState.transactionId,
-                amount = editorState.amount.parseAmountAllowSigned(editorState.type),
+                amount = editorState.amount.parseAmount(),
                 dateEpochDay = editorState.date.parseRequiredDate(),
                 sourceWalletId = editorState.sourceWalletId,
                 destinationWalletId = editorState.destinationWalletId,

@@ -42,6 +42,10 @@ class QuickSpendViewModel(
     private val launchableApps = MutableStateFlow<List<LaunchableApp>>(emptyList())
     private val permissionTick = MutableStateFlow(0)
 
+    init {
+        syncOverlayService()
+    }
+
     val uiState: StateFlow<QuickSpendUiState> = combine(
         settings,
         repository.observeBudgetSummaries(),

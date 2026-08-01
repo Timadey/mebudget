@@ -67,7 +67,7 @@ fun WalletDetailRouteScreen(
     onMoveWallet: (Long, Int) -> Unit,
     onAddExpense: (Long, ExpenseDraft) -> Unit,
     onAddTransfer: (Long, TransferDraft) -> Unit,
-    onAddAdjustment: (Long, AdjustmentDraft) -> Unit,
+    onAddCredit: (Long, CreditDraft) -> Unit,
     onUpdateTransaction: (TransactionEditorState) -> Unit,
     onDeleteTransaction: (Long) -> Unit,
     onDeleteWallet: (Long) -> Unit
@@ -76,7 +76,7 @@ fun WalletDetailRouteScreen(
     var editingWallet by remember { mutableStateOf<WalletSummary?>(null) }
     var expenseDraft by remember(wallet.id) { mutableStateOf<ExpenseDraft?>(null) }
     var transferDraft by remember(wallet.id) { mutableStateOf<TransferDraft?>(null) }
-    var adjustmentDraft by remember(wallet.id) { mutableStateOf<AdjustmentDraft?>(null) }
+    var creditDraft by remember(wallet.id) { mutableStateOf<CreditDraft?>(null) }
     var editingTransaction by remember { mutableStateOf<TransactionSummary?>(null) }
     var deletingTransaction by remember { mutableStateOf<TransactionSummary?>(null) }
     var deletingWallet by remember { mutableStateOf(false) }
@@ -98,7 +98,7 @@ fun WalletDetailRouteScreen(
                     destinationWalletId = activeWallets.firstOrNull { it.id != wallet.id }?.id
                 )
             },
-            onAdjust = { adjustmentDraft = AdjustmentDraft(walletId = wallet.id) },
+            onAdjust = { creditDraft = CreditDraft(walletId = wallet.id) },
             onEditWallet = { editingWallet = wallet },
             onArchiveToggle = { onArchiveWallet(wallet.id, !wallet.archived) },
             onMoveUp = { onMoveWallet(wallet.id, -1) },
@@ -149,14 +149,14 @@ fun WalletDetailRouteScreen(
             )
         }
 
-        adjustmentDraft?.let { draft ->
-            AdjustmentDialog(
+        creditDraft?.let { draft ->
+            CreditDialog(
                 wallets = activeWallets,
                 initial = draft,
-                onDismiss = { adjustmentDraft = null },
+                onDismiss = { creditDraft = null },
                 onSave = {
-                    onAddAdjustment(detail.budget.id, it)
-                    adjustmentDraft = null
+                    onAddCredit(detail.budget.id, it)
+                    creditDraft = null
                 }
             )
         }
@@ -212,7 +212,7 @@ fun BudgetDetailScreen(
     onMoveWallet: (Long, Int) -> Unit,
     onAddExpense: (Long, ExpenseDraft) -> Unit,
     onAddTransfer: (Long, TransferDraft) -> Unit,
-    onAddAdjustment: (Long, AdjustmentDraft) -> Unit,
+    onAddCredit: (Long, CreditDraft) -> Unit,
     onUpdateTransaction: (TransactionEditorState) -> Unit,
     onDeleteTransaction: (Long) -> Unit,
     onDeleteBudget: (Long) -> Unit,
@@ -753,6 +753,16 @@ private fun WalletDetailScreen(
                         text = { Text("DELETE", fontWeight = FontWeight.Black, color = Color(0xFFFF0000)) },
                         onClick = { onDeleteWallet(); expanded = false }
                     )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                if (wallet.archived) "UNARCHIVE" else "ARCHIVE",
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFFFF8800)
+                            )
+                        },
+                        onClick = { onArchiveToggle(); expanded = false }
+                    )
                 }
             }
             TextButton(onClick = onTogglePrivacyMode) {
@@ -872,7 +882,7 @@ private fun WalletActionStrip(
                 border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
             ) {
                 DropdownMenuItem(
-                    text = { Text("MANUAL ADJUSTMENT", fontWeight = FontWeight.Black) },
+                    text = { Text("CREDIT", fontWeight = FontWeight.Black) },
                     onClick = { onAdjust(); expanded = false }
                 )
             }
@@ -1062,13 +1072,13 @@ private fun TransactionHistoryRow(
     val accentColor = when (transaction.type) {
         TransactionType.EXPENSE -> Color(0xFFFF0000)
         TransactionType.TRANSFER -> MaterialTheme.colorScheme.onSurface
-        TransactionType.ADJUSTMENT -> Color(0xFFFF8800)
+        TransactionType.CREDIT -> Color(0xFFFF8800)
     }
     val amountText = transaction.amountText(focusWalletId, privacyModeEnabled)
     val typeTag = when (transaction.type) {
         TransactionType.EXPENSE -> "[EXP]"
         TransactionType.TRANSFER -> "[TRF]"
-        TransactionType.ADJUSTMENT -> "[ADJ]"
+        TransactionType.CREDIT -> "[CRD]"
     }
 
     var showActions by remember { mutableStateOf(false) }
@@ -1129,7 +1139,7 @@ private fun TransactionSummary.typeLabel(): String {
     return when (type) {
         TransactionType.EXPENSE -> "Expense"
         TransactionType.TRANSFER -> "Transfer"
-        TransactionType.ADJUSTMENT -> "Adjustment"
+        TransactionType.CREDIT -> "Credit"
     }
 }
 
@@ -1355,11 +1365,11 @@ private fun TransferDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AdjustmentDialog(
+private fun CreditDialog(
     wallets: List<WalletSummary>,
-    initial: AdjustmentDraft = AdjustmentDraft(),
+    initial: CreditDraft = CreditDraft(),
     onDismiss: () -> Unit,
-    onSave: (AdjustmentDraft) -> Unit
+    onSave: (CreditDraft) -> Unit
 ) {
     var draft by remember(initial, wallets) {
         mutableStateOf(initial.copy(walletId = initial.walletId ?: wallets.firstOrNull()?.id))
@@ -1381,7 +1391,7 @@ private fun AdjustmentDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    "MANUAL ADJUSTMENT",
+                    "CREDIT",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onSurface
@@ -1393,9 +1403,9 @@ private fun AdjustmentDialog(
                     onSelected = { draft = draft.copy(walletId = it) }
                 )
                 BrutalistTextField(
-                    label = "SIGNED AMOUNT (+/-)",
-                    value = draft.signedAmount,
-                    onValueChange = { draft = draft.copy(signedAmount = it.filterSignedNumericInput()) },
+                    label = "AMOUNT",
+                    value = draft.amount,
+                    onValueChange = { draft = draft.copy(amount = it.filterNumericInput()) },
                     keyboardType = KeyboardType.Number
                 )
                 BrutalistDateField(
@@ -1478,7 +1488,7 @@ private fun TransactionEditorDialog(
                             onSelected = { draft = draft.copy(destinationWalletId = it) }
                         )
                     }
-                    TransactionType.ADJUSTMENT -> {
+                    TransactionType.CREDIT -> {
                         BrutalistWalletDropdown(
                             label = "WALLET",
                             wallets = wallets,
@@ -1488,17 +1498,10 @@ private fun TransactionEditorDialog(
                     }
                 }
                 BrutalistTextField(
-                    label = if (draft.type == TransactionType.ADJUSTMENT) "SIGNED AMOUNT (+/-)" else "AMOUNT",
+                    label = "AMOUNT",
                     value = draft.amount,
-                    onValueChange = {
-                        draft = draft.copy(
-                            amount = when (draft.type) {
-                                TransactionType.ADJUSTMENT -> it.filterSignedNumericInput()
-                                else -> it.filterNumericInput()
-                            }
-                        )
-                    },
-                    keyboardType = if (draft.type == TransactionType.ADJUSTMENT) null else KeyboardType.Number
+                    onValueChange = { draft = draft.copy(amount = it.filterNumericInput()) },
+                    keyboardType = KeyboardType.Number
                 )
                 BrutalistDateField(
                     label = "DATE",
@@ -1554,14 +1557,6 @@ private fun ConfirmDeleteDialog(
     )
 }
 
-private fun String.filterSignedNumericInput(): String {
-    return buildString {
-        forEachIndexed { index, char ->
-            if (char.isDigit() || char == ',') append(char)
-            if (char == '-' && index == 0) append(char)
-        }
-    }
-}
 
 private fun BudgetEntity.formatDateRange(): String {
     val start = startDateEpochDay?.let(LocalDate::ofEpochDay)?.toString()
@@ -1581,7 +1576,7 @@ private fun TransactionSummary.title(focusWalletId: Long? = null): String {
             focusWalletId != null && destinationWalletId == focusWalletId -> "Moved from ${sourceWalletName.orEmpty()}"
             else -> "Moved from ${sourceWalletName.orEmpty()} to ${destinationWalletName.orEmpty()}"
         }
-        TransactionType.ADJUSTMENT -> "Adjusted ${sourceWalletName.orEmpty()}"
+        TransactionType.CREDIT -> "Credited ${sourceWalletName.orEmpty()}"
     }
 }
 
@@ -1593,7 +1588,7 @@ private fun TransactionSummary.subtitle(focusWalletId: Long? = null): String {
             focusWalletId != null && destinationWalletId == focusWalletId -> "Transfer in"
             else -> "Transfer"
         }
-        TransactionType.ADJUSTMENT -> if (amount < 0L) "Manual decrease" else "Manual increase"
+        TransactionType.CREDIT -> "Credit"
     }
 }
 
@@ -1609,7 +1604,7 @@ private fun TransactionSummary.amountText(
                 focusWalletId != null && destinationWalletId == focusWalletId -> "+••••"
                 else -> "••••"
             }
-            TransactionType.ADJUSTMENT -> if (amount > 0L) "+••••" else "-••••"
+            TransactionType.CREDIT -> "+••••"
         }
     }
     return when (type) {
@@ -1619,7 +1614,7 @@ private fun TransactionSummary.amountText(
             focusWalletId != null && destinationWalletId == focusWalletId -> "+${com.mebudget.app.data.formatAmount(amount)}"
             else -> com.mebudget.app.data.formatAmount(amount)
         }
-        TransactionType.ADJUSTMENT -> if (amount > 0L) "+${com.mebudget.app.data.formatAmount(amount)}" else com.mebudget.app.data.formatAmount(amount)
+        TransactionType.CREDIT -> "+${com.mebudget.app.data.formatAmount(amount)}"
     }
 }
 

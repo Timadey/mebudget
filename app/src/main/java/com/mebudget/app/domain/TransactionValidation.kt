@@ -18,11 +18,8 @@ fun validateTransactionChange(
     draft: TransactionEntity,
     replacingId: Long? = null
 ): Result<Unit> {
-    if (draft.type != TransactionType.ADJUSTMENT && draft.amount <= 0) {
+    if (draft.amount <= 0) {
         return Result.failure(IllegalArgumentException("Amount must be greater than zero."))
-    }
-    if (draft.type == TransactionType.ADJUSTMENT && draft.amount == 0L) {
-        return Result.failure(IllegalArgumentException("Adjustment cannot be zero."))
     }
     if (draft.type == TransactionType.TRANSFER && draft.sourceWalletId == draft.destinationWalletId) {
         return Result.failure(IllegalArgumentException("Choose two different wallets."))

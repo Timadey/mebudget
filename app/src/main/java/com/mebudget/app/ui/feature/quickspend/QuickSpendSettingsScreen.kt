@@ -1,5 +1,6 @@
 package com.mebudget.app.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,11 +9,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +40,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.mebudget.app.ui.common.offsetShadow
+import com.mebudget.app.ui.theme.AccentBlue
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,116 +105,218 @@ fun QuickSpendSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Settings", style = MaterialTheme.typography.headlineSmall)
-                    Text("Record expenses while using your bank or payment app, so your budget balance stays accurate.")
-                    Text(
-                        "Manual entry only. MeBudget does not read your bank screen.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = if (state.setupComplete) "Ready over selected apps" else nextStep,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    ChecklistRow("Choose quick-spend budget", hasBudget)
-                    ChecklistRow("Allow floating button", state.overlayPermissionGranted)
-                    ChecklistRow("Allow app detection", state.usageAccessGranted)
-                    ChecklistRow("Select bank/payment apps", hasApps)
-                    ChecklistRow("Enable Quick Spend", state.settings.enabled)
-                }
-            }
-
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("What you gain", style = MaterialTheme.typography.titleMedium)
-                    Text("Record before or after payment.")
-                    Text("Avoid balance mismatch between your bank and budget.")
-                    Text("Works only on apps you choose.")
-                }
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Enable Quick Spend", style = MaterialTheme.typography.titleMedium)
-                        Text("Show a small MeBudget button over selected apps.")
-                    }
-                    Switch(
-                        checked = state.settings.enabled,
-                        onCheckedChange = onToggleEnabled
-                    )
-                }
-            }
-
-            item {
-                ExposedDropdownMenuBox(
-                    expanded = budgetMenuExpanded,
-                    onExpandedChange = { budgetMenuExpanded = !budgetMenuExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = selectedBudget?.name ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Quick-spend budget") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(budgetMenuExpanded) },
-                        modifier = Modifier
-                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = budgetMenuExpanded,
-                        onDismissRequest = { budgetMenuExpanded = false }
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        state.budgets.forEach { budget ->
-                            DropdownMenuItem(
-                                text = { Text(budget.name) },
-                                onClick = {
-                                    onSelectBudget(budget.id)
-                                    budgetMenuExpanded = false
-                                }
+                        Text("Settings", style = MaterialTheme.typography.headlineSmall, color = AccentBlue)
+                        Text("Record expenses while using your bank or payment app, so your budget balance stays accurate.")
+                        Text(
+                            "Manual entry only. MeBudget does not read your bank screen.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = if (state.setupComplete) "Ready over selected apps" else nextStep,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = AccentBlue
+                        )
+                        ChecklistRow("Choose quick-spend budget", hasBudget)
+                        ChecklistRow("Allow floating button", state.overlayPermissionGranted)
+                        ChecklistRow("Allow app detection", state.usageAccessGranted)
+                        ChecklistRow("Select bank/payment apps", hasApps)
+                        ChecklistRow("Enable Quick Spend", state.settings.enabled)
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("What you gain", style = MaterialTheme.typography.titleMedium, color = AccentBlue)
+                        Text("Record before or after payment.")
+                        Text("Avoid balance mismatch between your bank and budget.")
+                        Text("Works only on apps you choose.")
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Enable Quick Spend", style = MaterialTheme.typography.titleMedium, color = AccentBlue)
+                            Text("Show a small MeBudget button over selected apps.")
+                        }
+                        Switch(
+                            checked = state.settings.enabled,
+                            onCheckedChange = onToggleEnabled,
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = AccentBlue,
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary
                             )
+                        )
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    ExposedDropdownMenuBox(
+                        expanded = budgetMenuExpanded,
+                        onExpandedChange = { budgetMenuExpanded = !budgetMenuExpanded },
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = selectedBudget?.name ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Quick-spend budget") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(budgetMenuExpanded) },
+                            modifier = Modifier
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = budgetMenuExpanded,
+                            onDismissRequest = { budgetMenuExpanded = false }
+                        ) {
+                            state.budgets.forEach { budget ->
+                                DropdownMenuItem(
+                                    text = { Text(budget.name) },
+                                    onClick = {
+                                        onSelectBudget(budget.id)
+                                        budgetMenuExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
 
             item {
-                PermissionRow(
-                    title = "Display over other apps",
-                    granted = state.overlayPermissionGranted,
-                    buttonLabel = "Allow Floating Button",
-                    onClick = onOpenOverlaySettings
-                )
-            }
-
-            item {
-                PermissionRow(
-                    title = "Usage Access",
-                    granted = state.usageAccessGranted,
-                    buttonLabel = "Allow App Detection",
-                    onClick = onOpenUsageSettings
-                )
-            }
-
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Bank/payment apps", style = MaterialTheme.typography.titleMedium)
-                    Text("${selectedPackages.size} selected. The floating button only appears over apps you choose.")
-                    OutlinedTextField(
-                        value = appSearchQuery,
-                        onValueChange = { appSearchQuery = it },
-                        label = { Text("Search apps") },
-                        modifier = Modifier.fillMaxWidth()
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    PermissionRow(
+                        title = "Display over other apps",
+                        granted = state.overlayPermissionGranted,
+                        buttonLabel = "Allow Floating Button",
+                        onClick = onOpenOverlaySettings,
+                        modifier = Modifier.padding(16.dp)
                     )
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    PermissionRow(
+                        title = "Usage Access",
+                        granted = state.usageAccessGranted,
+                        buttonLabel = "Allow App Detection",
+                        onClick = onOpenUsageSettings,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("Bank/payment apps", style = MaterialTheme.typography.titleMedium, color = AccentBlue)
+                        Text("${selectedPackages.size} selected. The floating button only appears over apps you choose.")
+                        OutlinedTextField(
+                            value = appSearchQuery,
+                            onValueChange = { appSearchQuery = it },
+                            label = { Text("Search apps") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
 
@@ -265,19 +374,24 @@ private fun PermissionRow(
     title: String,
     granted: Boolean,
     buttonLabel: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(title, style = MaterialTheme.typography.titleSmall, color = AccentBlue)
             Text(if (granted) "Allowed" else "Required")
         }
         if (!granted) {
-            Button(onClick = onClick) {
+            Button(
+                onClick = onClick,
+                shape = RoundedCornerShape(0.dp),
+                border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
+            ) {
                 Text(buttonLabel)
             }
         }

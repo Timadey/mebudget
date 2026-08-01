@@ -7,20 +7,20 @@ import org.junit.Test
 class BudgetAnalyticsTest {
 
     @Test
-    fun `compute balances applies expense transfer and adjustment in chronological order`() {
+    fun `compute balances applies expense transfer and credit in chronological order`() {
         val wallets = listOf(
             WalletEntity(id = 1, budgetId = 1, name = "Food", plannedAmount = 10_000, sortOrder = 0),
             WalletEntity(id = 2, budgetId = 1, name = "Bills", plannedAmount = 5_000, sortOrder = 1)
         )
         val transactions = listOf(
             TransactionEntity(id = 3, budgetId = 1, type = TransactionType.TRANSFER, amount = 2_000, dateEpochDay = 3, sourceWalletId = 1, destinationWalletId = 2),
-            TransactionEntity(id = 2, budgetId = 1, type = TransactionType.ADJUSTMENT, amount = -1_000, dateEpochDay = 2, sourceWalletId = 1),
+            TransactionEntity(id = 2, budgetId = 1, type = TransactionType.CREDIT, amount = 1_000, dateEpochDay = 2, sourceWalletId = 1),
             TransactionEntity(id = 1, budgetId = 1, type = TransactionType.EXPENSE, amount = 3_000, dateEpochDay = 1, sourceWalletId = 1)
         )
 
         val balances = computeBalances(wallets, transactions)
 
-        assertEquals(4_000L, balances[1])
+        assertEquals(6_000L, balances[1])
         assertEquals(7_000L, balances[2])
     }
 

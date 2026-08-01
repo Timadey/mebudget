@@ -385,7 +385,7 @@ private fun BudgetInsightHeroCard(
                 )
                 InsightMetricCard(
                     title = "Adjusted",
-                    value = maskedAmount(insights.totalAdjusted, privacyModeEnabled),
+                    value = maskedAmount(insights.totalCredited, privacyModeEnabled),
                     supporting = "Manual corrections",
                     modifier = Modifier.weight(1f)
                 )

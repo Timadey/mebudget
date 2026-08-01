@@ -22,7 +22,7 @@ import com.mebudget.app.ui.theme.Overspend
 import com.mebudget.app.ui.theme.Success
 import com.mebudget.app.ui.theme.Warning
 
-enum class TransactionType { Expense, Transfer, Adjustment }
+enum class TransactionType { Expense, Transfer, Credit }
 
 @Composable
 fun TransactionTypeBadge(
@@ -32,7 +32,7 @@ fun TransactionTypeBadge(
     val color = when (type) {
         TransactionType.Expense -> Overspend
         TransactionType.Transfer -> AccentBlue
-        TransactionType.Adjustment -> Warning
+        TransactionType.Credit -> Warning
     }
     Canvas(modifier = modifier.size(8.dp)) {
         when (type) {
@@ -42,7 +42,7 @@ fun TransactionTypeBadge(
                 topLeft = Offset.Zero,
                 size = Size(size.width, size.height)
             )
-            TransactionType.Adjustment -> drawTriangle(color)
+            TransactionType.Credit -> drawTriangle(color)
         }
     }
 }

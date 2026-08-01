@@ -27,7 +27,7 @@ internal fun computeBalances(
                     }
                 }
 
-                TransactionType.ADJUSTMENT -> {
+                TransactionType.CREDIT -> {
                     transaction.sourceWalletId?.let { walletId ->
                         balances[walletId] = (balances[walletId] ?: 0L) + transaction.amount
                     }
@@ -62,8 +62,8 @@ internal fun computeBudgetInsights(
         val transferOutCount = transactions.count {
             it.type == TransactionType.TRANSFER && it.sourceWalletId == walletSummary.id
         }
-        val adjustmentTotal = transactions
-            .filter { it.type == TransactionType.ADJUSTMENT && it.sourceWalletId == walletSummary.id }
+        val creditTotal = transactions
+            .filter { it.type == TransactionType.CREDIT && it.sourceWalletId == walletSummary.id }
             .sumOf { it.amount }
 
         WalletBudgetInsight(
@@ -76,7 +76,7 @@ internal fun computeBudgetInsights(
             transferInCount = transferInCount,
             transferOutTotal = transferOutTotal,
             transferOutCount = transferOutCount,
-            adjustmentTotal = adjustmentTotal,
+            creditTotal = creditTotal,
             endingBalance = walletSummary.balance,
             varianceFromPlan = walletSummary.balance - walletSummary.plannedAmount,
             overspent = walletSummary.balance < 0,
@@ -116,7 +116,7 @@ internal fun computeBudgetInsights(
         totalPlanned = wallets.sumOf { it.plannedAmount },
         totalSpent = transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount },
         totalTransferred = transactions.filter { it.type == TransactionType.TRANSFER }.sumOf { it.amount },
-        totalAdjusted = transactions.filter { it.type == TransactionType.ADJUSTMENT }.sumOf { kotlin.math.abs(it.amount) },
+        totalCredited = transactions.filter { it.type == TransactionType.CREDIT }.sumOf { it.amount },
         totalEndingBalance = walletSummaries.sumOf { it.balance },
         overspentWallets = walletInsights.filter { it.overspent },
         mostRescuedWallet = mostRescuedWallet,

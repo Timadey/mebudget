@@ -14,7 +14,7 @@ enum class NegativeBalanceRule {
 enum class TransactionType {
     EXPENSE,
     TRANSFER,
-    ADJUSTMENT
+    CREDIT
 }
 
 @Entity(tableName = "budgets")
@@ -116,7 +116,7 @@ data class WalletBudgetInsight(
     val transferInCount: Int,
     val transferOutTotal: Long,
     val transferOutCount: Int,
-    val adjustmentTotal: Long,
+    val creditTotal: Long,
     val endingBalance: Long,
     val varianceFromPlan: Long,
     val overspent: Boolean,
@@ -142,7 +142,7 @@ data class BudgetInsightSummary(
     val totalPlanned: Long,
     val totalSpent: Long,
     val totalTransferred: Long,
-    val totalAdjusted: Long,
+    val totalCredited: Long,
     val totalEndingBalance: Long,
     val overspentWallets: List<WalletBudgetInsight>,
     val mostRescuedWallet: WalletBudgetInsight?,
