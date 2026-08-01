@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -165,7 +165,7 @@ fun MeBudgetNavHost(
                         },
                         icon = {
                             Icon(
-                                Icons.Default.Analytics,
+                                Icons.Default.Info,
                                 contentDescription = "Insights",
                                 modifier = Modifier.size(28.dp),
                                 tint = if (currentRoute == MeBudgetRoute.globalInsights) {

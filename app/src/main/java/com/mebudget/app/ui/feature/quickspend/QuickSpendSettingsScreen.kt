@@ -13,7 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -340,7 +340,7 @@ fun QuickSpendSettingsScreen(
                             imageVector = if (selected) {
                                 Icons.Default.CheckCircle
                             } else {
-                                Icons.Default.RadioButtonUnchecked
+                                Icons.Default.Close
                             },
                             contentDescription = if (selected) "Selected" else "Not selected"
                         )
@@ -362,7 +362,7 @@ private fun ChecklistRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = if (complete) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+            imageVector = if (complete) Icons.Default.CheckCircle else Icons.Default.Close,
             contentDescription = null
         )
         Text(label)
