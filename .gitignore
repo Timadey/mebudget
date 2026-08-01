@@ -13,3 +13,6 @@
 .superpowers/
 .opencode/
 docs/
+.DS_Store
+*.zip
+*.docx
