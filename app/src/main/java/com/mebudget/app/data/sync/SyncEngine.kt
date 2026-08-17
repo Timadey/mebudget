@@ -28,7 +28,8 @@ class SyncEngine(
     private val pocketBaseClient: PocketBaseClient,
     private val authManager: AuthManager,
     private val database: AppDatabase,
-    private val realtimeListener: RealtimeListener
+    private val realtimeListener: RealtimeListener,
+    private val conflictResolver: ConflictResolver = ConflictResolver()
 ) {
     private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
     val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
@@ -164,16 +165,24 @@ class SyncEngine(
                 meta?.let { metadataDao.delete(it) }
                 continue
             }
-            val entity = bodyToBudget(rec, meta?.localId)
+            val remoteUpdated = rec.safeGetLong("updatedAtMillis") ?: 0L
             val localId = if (meta != null) {
                 val existing = budgetDao.getBudget(meta.localId)
-                val remoteUpdated = rec.safeGetLong("updatedAtMillis") ?: 0L
-                val localWins = existing != null &&
-                    (meta.lastSyncedAtMillis ?: 0L) >= remoteUpdated
-                if (!localWins) budgetDao.update(entity)
+                if (existing != null) {
+                    budgetDao.update(
+                        conflictResolver.resolveBudgetConflict(
+                            local = existing,
+                            remote = bodyToBudget(rec, null),
+                            localLastSyncedAtMillis = meta.lastSyncedAtMillis,
+                            remoteUpdatedAtMillis = remoteUpdated
+                        )
+                    )
+                } else {
+                    budgetDao.insert(bodyToBudget(rec, meta.localId))
+                }
                 meta.localId
             } else {
-                budgetDao.insert(entity)
+                budgetDao.insert(bodyToBudget(rec, null))
             }
             saveMetadata(SyncEntityType.BUDGET, localId, rec.remoteId)
         }
@@ -192,16 +201,24 @@ class SyncEngine(
             }
             val remoteBudgetId = rec.safeGetString("budgetId") ?: continue
             val localBudgetId = budgetLocalByRemote[remoteBudgetId] ?: continue
-            val entity = bodyToWallet(rec, meta?.localId, localBudgetId)
+            val remoteUpdated = rec.safeGetLong("updatedAtMillis") ?: 0L
             val localId = if (meta != null) {
                 val existing = walletDao.getWallet(meta.localId)
-                val remoteUpdated = rec.safeGetLong("updatedAtMillis") ?: 0L
-                val localWins = existing != null &&
-                    (meta.lastSyncedAtMillis ?: 0L) >= remoteUpdated
-                if (!localWins) walletDao.update(entity)
+                if (existing != null) {
+                    walletDao.update(
+                        conflictResolver.resolveWalletConflict(
+                            local = existing,
+                            remote = bodyToWallet(rec, null, localBudgetId),
+                            localLastSyncedAtMillis = meta.lastSyncedAtMillis,
+                            remoteUpdatedAtMillis = remoteUpdated
+                        )
+                    )
+                } else {
+                    walletDao.insert(bodyToWallet(rec, null, localBudgetId))
+                }
                 meta.localId
             } else {
-                walletDao.insert(entity)
+                walletDao.insert(bodyToWallet(rec, null, localBudgetId))
             }
             saveMetadata(SyncEntityType.WALLET, localId, rec.remoteId)
         }
@@ -221,16 +238,24 @@ class SyncEngine(
             }
             val remoteBudgetId = rec.safeGetString("budgetId") ?: continue
             val localBudgetId = budgetLocalByRemote[remoteBudgetId] ?: continue
-            val entity = bodyToTransaction(rec, meta?.localId, localBudgetId, walletLocalByRemote)
+            val remoteUpdated = rec.safeGetLong("updatedAtMillis") ?: 0L
             val localId = if (meta != null) {
                 val existing = transactionDao.getTransaction(meta.localId)
-                val remoteUpdated = rec.safeGetLong("updatedAtMillis") ?: 0L
-                val localWins = existing != null &&
-                    (meta.lastSyncedAtMillis ?: 0L) >= remoteUpdated
-                if (!localWins) transactionDao.update(entity)
+                if (existing != null) {
+                    transactionDao.update(
+                        conflictResolver.resolveTransactionConflict(
+                            local = existing,
+                            remote = bodyToTransaction(rec, null, localBudgetId, walletLocalByRemote),
+                            localLastSyncedAtMillis = meta.lastSyncedAtMillis,
+                            remoteUpdatedAtMillis = remoteUpdated
+                        )
+                    )
+                } else {
+                    transactionDao.insert(bodyToTransaction(rec, null, localBudgetId, walletLocalByRemote))
+                }
                 meta.localId
             } else {
-                transactionDao.insert(entity)
+                transactionDao.insert(bodyToTransaction(rec, null, localBudgetId, walletLocalByRemote))
             }
             saveMetadata(SyncEntityType.TRANSACTION, localId, rec.remoteId)
         }
