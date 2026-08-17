@@ -118,6 +118,9 @@ dependencies {
     // DataStore for local preferences
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 
+    // Paystack SDK for subscription billing
+    implementation("co.paystack.android:paystack:3.1.3")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.mockk:mockk:1.13.13")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
