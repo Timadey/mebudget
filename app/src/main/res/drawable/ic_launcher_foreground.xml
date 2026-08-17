@@ -3,43 +3,25 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Blue background -->
     <path
-        android:fillColor="#21413B"
-        android:pathData="M25,33
-            a9,9 0 0,1 9,-9
-            h40
-            a9,9 0 0,1 9,9
-            v42
-            a9,9 0 0,1 -9,9
-            h-40
-            a9,9 0 0,1 -9,-9
-            z" />
+        android:fillColor="#0055FF"
+        android:pathData="M24,24h60v60h-60z" />
+    <!-- Black horizontal bars -->
     <path
-        android:fillColor="#597A59"
-        android:pathData="M25,41 h58 v15 h-58 z" />
+        android:fillColor="#111111"
+        android:pathData="M34,54h40v6h-40z" />
     <path
-        android:fillColor="#FFF7EC"
-        android:pathData="M37,52 h15 a2,2 0 0,1 0,4 h-15 a2,2 0 0,1 0,-4 z" />
+        android:fillColor="#111111"
+        android:pathData="M34,42h40v6h-40z" />
     <path
-        android:fillColor="#FFF7EC"
-        android:pathData="M37,61 h25 a2,2 0 0,1 0,4 h-25 a2,2 0 0,1 0,-4 z" />
+        android:fillColor="#111111"
+        android:pathData="M34,30h40v6h-40z" />
+    <!-- Blue circle with black border -->
     <path
-        android:fillColor="#CEB7A3"
-        android:pathData="M67,51
-            m-0.5,0
-            a6.5,6.5 0 1,1 13,0
-            a6.5,6.5 0 1,1 -13,0" />
+        android:fillColor="#111111"
+        android:pathData="M54,36m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
     <path
-        android:fillColor="#21413B"
-        android:pathData="M67,51
-            m2.3,-3.8
-            a1.7,1.7 0 1,1 0,3.4
-            a1.7,1.7 0 1,1 0,-3.4" />
-    <path
-        android:fillColor="#21413B"
-        android:pathData="M67,51
-            m2.3,0.4
-            a1.7,1.7 0 1,1 0,3.4
-            a1.7,1.7 0 1,1 0,-3.4" />
+        android:fillColor="#0055FF"
+        android:pathData="M54,36m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
 </vector>
-
