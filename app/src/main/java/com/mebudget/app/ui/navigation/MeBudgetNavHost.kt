@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -106,7 +107,8 @@ fun MeBudgetNavHost(
     val currentRoute = navBackStackEntry?.destination?.route
     val topLevelRoutes = setOf(
         MeBudgetRoute.budgets,
-        MeBudgetRoute.globalInsights
+        MeBudgetRoute.globalInsights,
+        MeBudgetRoute.profile
     )
 
     val syncDeps = remember { context.applicationContext.syncDependencies() }
@@ -227,6 +229,39 @@ fun MeBudgetNavHost(
                                 text = "Insights",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (currentRoute == MeBudgetRoute.globalInsights) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute == MeBudgetRoute.profile,
+                        onClick = {
+                            navController.navigate(MeBudgetRoute.profile) {
+                                popUpTo(MeBudgetRoute.budgets) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = "Profile",
+                                modifier = Modifier.size(28.dp),
+                                tint = if (currentRoute == MeBudgetRoute.profile) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = "Profile",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (currentRoute == MeBudgetRoute.profile) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
                                     MaterialTheme.colorScheme.onSurfaceVariant
