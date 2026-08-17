@@ -1,6 +1,7 @@
 package com.mebudget.app.data.sync
 
 import com.google.gson.GsonBuilder
+import com.mebudget.app.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -11,15 +12,24 @@ import java.util.concurrent.TimeUnit
  * Wraps the [PocketBaseApi] Retrofit instance and injects the bearer auth token.
  * Thread-safe: [authToken] is read from an atomic ref so background sync workers
  * and the UI can share a single client.
+ *
+ * [baseUrl] is resolved from [com.mebudget.app.data.sync.PocketBaseConfig] (i.e.
+ * BuildConfig), so debug and release builds automatically target different
+ * servers (emulator loopback vs production HTTPS).
  */
 class PocketBaseClient(
-    val baseUrl: String
+    val baseUrl: String = PocketBaseConfig.baseUrl
 ) {
     @Volatile
     var authToken: String? = null
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BASIC
+        // Never log request/response bodies (or metadata) in release builds.
+        level = if (BuildConfig.DEBUG) {
+            HttpLoggingInterceptor.Level.BASIC
+        } else {
+            HttpLoggingInterceptor.Level.NONE
+        }
     }
 
     private val httpClient: OkHttpClient = OkHttpClient.Builder()

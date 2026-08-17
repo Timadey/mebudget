@@ -64,6 +64,9 @@ import com.mebudget.app.ui.sync.MergeViewModelFactory
 import com.mebudget.app.ui.navigation.MeBudgetRoute
 import com.mebudget.app.ui.theme.AccentBlue
 
+/** PocketBase user JWTs are short-lived; renew well before they expire. */
+private const val TOKEN_REFRESH_INTERVAL_MS = 45 * 60 * 1000L
+
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun MeBudgetNavHost(
@@ -105,6 +108,27 @@ fun MeBudgetNavHost(
         MeBudgetRoute.budgets,
         MeBudgetRoute.globalInsights
     )
+
+    val syncDeps = remember { context.applicationContext.syncDependencies() }
+
+    // Session + realtime lifecycle: restore the persisted session once, then
+    // react to sign-in/out by starting/stopping the live stream and renewing
+    // the PocketBase auth token while signed in. Keying on the auth state means
+    // the refresh loop is cancelled automatically on sign-out.
+    LaunchedEffect(Unit) { syncDeps.authManager.restoreSession() }
+    val authState by syncDeps.authManager.authState.collectAsState()
+    LaunchedEffect(authState) {
+        if (authState.isSignedIn) {
+            syncDeps.subscriptionManager.refresh()
+            syncDeps.syncEngine.startRealtimeUpdates()
+            while (true) {
+                kotlinx.coroutines.delay(TOKEN_REFRESH_INTERVAL_MS)
+                syncDeps.authManager.refreshAuth()
+            }
+        } else {
+            syncDeps.syncEngine.stopRealtimeUpdates()
+        }
+    }
 
     LaunchedEffect(budgetsUiState.pendingBudgetIdToOpen, currentRoute) {
         val selectedBudgetId = budgetsUiState.pendingBudgetIdToOpen ?: return@LaunchedEffect
@@ -228,21 +252,18 @@ fun MeBudgetNavHost(
                     val syncDeps = context.applicationContext.syncDependencies()
                     val syncState by syncDeps.syncEngine.syncState.collectAsState()
                     val scope = rememberCoroutineScope()
-                    val featureGate = remember {
-                        FeatureGate(
-                            isSignedIn = { false },
-                            isPro = { false }
-                        )
-                    }
                     val limitsConfigManager = remember { LimitsConfigManager(syncDeps.client) }
                     val limits by limitsConfigManager.limits.collectAsState()
-                    LaunchedEffect(Unit) { limitsConfigManager.refreshLimits() }
                     val gate = remember(limits) {
                         FeatureGate(
-                            isSignedIn = { false },
-                            isPro = { false },
+                            isSignedIn = { syncDeps.authManager.authState.value.isSignedIn },
+                            isPro = { syncDeps.subscriptionManager.isPro.value },
                             limits = limits
                         )
+                    }
+                    LaunchedEffect(Unit) {
+                        limitsConfigManager.refreshLimits()
+                        syncDeps.subscriptionManager.refresh()
                     }
                     BudgetsScreen(
                         budgets = budgetsUiState.budgets,
@@ -333,9 +354,13 @@ fun MeBudgetNavHost(
                             context.applicationContext.paystackManager()
                         )
                     )
+                    val scope = rememberCoroutineScope()
                     SubscriptionScreen(
                         viewModel = subscriptionViewModel,
-                        onSubscribeSuccess = { navController.popBackStack() },
+                        onSubscribeSuccess = {
+                            scope.launch { syncDeps.subscriptionManager.refresh() }
+                            navController.popBackStack()
+                        },
                         onBack = { navController.popBackStack() }
                     )
                 }
@@ -355,7 +380,8 @@ fun MeBudgetNavHost(
                 composable(MeBudgetRoute.profile) {
                     val profileViewModel: ProfileViewModel = viewModel(
                         factory = ProfileViewModelFactory(
-                            context.applicationContext.authManager()
+                            authManager = context.applicationContext.authManager(),
+                            isPro = { syncDeps.subscriptionManager.isPro.value }
                         )
                     )
                     ProfileScreen(

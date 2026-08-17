@@ -66,4 +66,30 @@ class AuthManager(
             )
         }
     }
+
+    /**
+     * Renews the PocketBase JWT before it expires. No-op unless signed in.
+     * Keeps the previous session on failure so transient network errors do not
+     * sign the user out.
+     */
+    suspend fun refreshAuth() {
+        if (_authState.value !is AuthState.SignedIn) return
+        try {
+            val response = pocketBaseClient.api.refreshAuth()
+            pocketBaseClient.authToken = response.token
+            userPreferences.saveAuthData(
+                token = response.token,
+                userId = response.record.id,
+                email = response.record.email,
+                name = response.record.name
+            )
+            _authState.value = AuthState.SignedIn(
+                userId = response.record.id,
+                email = response.record.email,
+                name = response.record.name
+            )
+        } catch (_: Exception) {
+            // Keep the existing session; the next periodic refresh will retry.
+        }
+    }
 }
