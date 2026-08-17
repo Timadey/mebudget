@@ -71,13 +71,13 @@ routerAdd("POST", "/api/subscriptions/checkout", (e) => {
     });
   } catch (err) {
     $app.logger().error("checkout: paystack request failed: " + String(err));
-    throw new InternalServerError("Failed to reach payment provider");
+    throw new BadGatewayError("Failed to reach payment provider");
   }
 
   const parsed = (res && typeof res.json === "object") ? res.json : null;
   if (!res || res.statusCode >= 400 || !parsed || !parsed.status) {
     $app.logger().error("checkout: paystack returned status " + (res && res.statusCode) + " body " + (res && res.body));
-    throw new InternalServerError("Failed to create checkout");
+    throw new BadGatewayError("Failed to create checkout");
   }
   const data = parsed.data || {};
 
