@@ -73,8 +73,8 @@ routerAdd("POST", "/api/paystack/webhook", (e) => {
   if (metaPlan === "pro_monthly" || metaPlan === "pro_annual") {
     planId = metaPlan;
   }
+  const sub = (data.subscription || {}).plan || data.plan || {};
   if (!planId) {
-    const sub = (data.subscription || {}).plan || data.plan || {};
     const interval = sub.interval || null;
     if (interval === "monthly") planId = "pro_monthly";
     else if (interval === "annually" || interval === "yearly") planId = "pro_annual";
