@@ -44,6 +44,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.mebudget.app.data.BudgetEntity
 import com.mebudget.app.billing.FeatureGate
+import com.mebudget.app.data.sync.LimitsConfigManager
 import com.mebudget.app.ui.auth.SignInScreen
 import com.mebudget.app.ui.auth.SignInViewModel
 import com.mebudget.app.ui.auth.SignInViewModelFactory
@@ -233,6 +234,16 @@ fun MeBudgetNavHost(
                             isPro = { false }
                         )
                     }
+                    val limitsConfigManager = remember { LimitsConfigManager(syncDeps.client) }
+                    val limits by limitsConfigManager.limits.collectAsState()
+                    LaunchedEffect(Unit) { limitsConfigManager.refreshLimits() }
+                    val gate = remember(limits) {
+                        FeatureGate(
+                            isSignedIn = { false },
+                            isPro = { false },
+                            limits = limits
+                        )
+                    }
                     BudgetsScreen(
                         budgets = budgetsUiState.budgets,
                         onOpenBudget = { budgetId ->
@@ -247,7 +258,7 @@ fun MeBudgetNavHost(
                         onSyncRetry = {
                             scope.launch { syncDeps.syncEngine.syncNow() }
                         },
-                        canCreateBudget = featureGate.canCreateBudget(budgetsUiState.budgets.size),
+                        canCreateBudget = gate.canCreateBudget(budgetsUiState.budgets.size),
                         onUpgradeClick = {
                             navController.navigate(MeBudgetRoute.subscription)
                         }
