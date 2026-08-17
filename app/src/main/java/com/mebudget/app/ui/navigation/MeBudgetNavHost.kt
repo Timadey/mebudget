@@ -314,6 +314,13 @@ fun MeBudgetNavHost(
                         onSyncRetry = {
                             scope.launch { syncDeps.syncEngine.syncNow() }
                         },
+                        onSyncPausedClick = {
+                            navController.navigate(MeBudgetRoute.profile) {
+                                popUpTo(MeBudgetRoute.budgets) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
                         canCreateBudget = gate.canCreateBudget(budgetsUiState.budgets.size),
                         onUpgradeClick = {
                             navController.navigate(MeBudgetRoute.subscription)

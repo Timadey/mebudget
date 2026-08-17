@@ -61,6 +61,7 @@ fun BudgetsScreen(
     onDeleteBudget: (Long) -> Unit,
     syncState: SyncState = SyncState.Idle,
     onSyncRetry: () -> Unit = {},
+    onSyncPausedClick: () -> Unit = {},
     canCreateBudget: Boolean = true,
     onUpgradeClick: () -> Unit = {}
 ) {
@@ -90,7 +91,8 @@ fun BudgetsScreen(
                     item {
                         SyncStatusBanner(
                             syncState = syncState,
-                            onRetryClick = onSyncRetry
+                            onRetryClick = onSyncRetry,
+                            onPausedClick = onSyncPausedClick
                         )
                     }
                 }
