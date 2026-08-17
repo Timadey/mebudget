@@ -46,6 +46,16 @@ class PocketBaseClient(
         .build()
         .create(PocketBaseApi::class.java)
 
+    internal fun newHttpClient(): OkHttpClient = httpClient
+
+    /**
+     * A client with an effectively-infinite read timeout for the SSE realtime
+     * stream (the 30s default would kill a long-lived connection).
+     */
+    internal fun newSseHttpClient(): OkHttpClient = httpClient.newBuilder()
+        .readTimeout(0, TimeUnit.MILLISECONDS)
+        .build()
+
     fun clearAuth() {
         authToken = null
     }

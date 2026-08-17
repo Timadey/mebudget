@@ -27,7 +27,8 @@ import kotlinx.coroutines.flow.first
 class SyncEngine(
     private val pocketBaseClient: PocketBaseClient,
     private val authManager: AuthManager,
-    private val database: AppDatabase
+    private val database: AppDatabase,
+    private val realtimeListener: RealtimeListener
 ) {
     private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
     val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
@@ -36,6 +37,19 @@ class SyncEngine(
     private val walletDao get() = database.walletDao()
     private val transactionDao get() = database.transactionDao()
     private val metadataDao get() = database.syncMetadataDao()
+
+    /** Starts live push updates from the server. Safe to call at any time. */
+    fun startRealtimeUpdates() {
+        realtimeListener.startListening()
+    }
+
+    /** Stops the live stream until [startRealtimeUpdates] is called again. */
+    fun stopRealtimeUpdates() {
+        realtimeListener.stopListening()
+    }
+
+    /** True while the realtime SSE stream is connected. */
+    val isListening get() = realtimeListener.isListening
 
     suspend fun syncNow(): Result<Unit> {
         val auth = authManager.authState.first()

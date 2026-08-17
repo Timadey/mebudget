@@ -57,7 +57,7 @@ class SyncEngineTest {
         every { database.transactionDao() } returns transactionDao
         every { database.syncMetadataDao() } returns metadataDao
 
-        syncEngine = SyncEngine(client, authManager, database)
+        syncEngine = SyncEngine(client, authManager, database, RealtimeListener(client))
     }
 
     @Test

@@ -62,6 +62,18 @@ interface PocketBaseApi {
         @Path("collection") collection: String,
         @Path("id") id: String
     )
+
+    // --- Realtime (SSE) --------------------------------------------------------
+    //
+    // The SSE GET /api/realtime stream is opened with an okhttp-sse EventSource
+    // (it needs a persistent connection, which Retrofit cannot represent).
+    // After the server emits PB_CONNECT, the listener POSTs the client id and
+    // subscriptions here to authorize and subscribe the connection.
+
+    @POST("api/realtime")
+    suspend fun setRealtimeSubscriptions(
+        @Body body: JsonObject
+    )
 }
 
 data class AuthWithPasswordRequest(
