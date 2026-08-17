@@ -48,6 +48,7 @@ import com.mebudget.app.ui.common.SectionHeader
 import com.mebudget.app.ui.common.BudgetStatusIndicator
 import com.mebudget.app.ui.common.BudgetStatus
 import com.mebudget.app.ui.common.SyncStatusBanner
+import com.mebudget.app.ui.common.UpgradePrompt
 import com.mebudget.app.ui.theme.AccentBlue
 
 @Composable
@@ -59,12 +60,15 @@ fun BudgetsScreen(
     onDuplicateBudget: (Long, String) -> Unit,
     onDeleteBudget: (Long) -> Unit,
     syncState: SyncState = SyncState.Idle,
-    onSyncRetry: () -> Unit = {}
+    onSyncRetry: () -> Unit = {},
+    canCreateBudget: Boolean = true,
+    onUpgradeClick: () -> Unit = {}
 ) {
     var showCreateOptions by rememberSaveable { mutableStateOf(false) }
     var showBlankBudgetDialog by rememberSaveable { mutableStateOf(false) }
     var templateBudgetId by rememberSaveable { mutableStateOf<Long?>(null) }
     var deletingBudgetId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var showUpgradePrompt by rememberSaveable { mutableStateOf(false) }
 
     val totalBalance = budgets.sumOf { it.totalBalance }
     val activeWallets = budgets.sumOf { it.activeWalletCount }
@@ -117,7 +121,13 @@ fun BudgetsScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Button(
-                            onClick = { showCreateOptions = true },
+                            onClick = {
+                                if (canCreateBudget) {
+                                    showCreateOptions = true
+                                } else {
+                                    showUpgradePrompt = true
+                                }
+                            },
                             shape = RoundedCornerShape(0.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
@@ -172,6 +182,17 @@ fun BudgetsScreen(
                 showCreateOptions = false
                 templateBudgetId = budgets.firstOrNull()?.id
             }
+        )
+    }
+
+    if (showUpgradePrompt) {
+        UpgradePrompt(
+            featureName = "Unlimited Budgets",
+            onUpgradeClick = {
+                showUpgradePrompt = false
+                onUpgradeClick()
+            },
+            onDismiss = { showUpgradePrompt = false }
         )
     }
 

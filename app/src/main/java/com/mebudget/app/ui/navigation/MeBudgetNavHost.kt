@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -42,6 +43,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.mebudget.app.data.BudgetEntity
+import com.mebudget.app.billing.FeatureGate
 import com.mebudget.app.ui.auth.SignInScreen
 import com.mebudget.app.ui.auth.SignInViewModel
 import com.mebudget.app.ui.auth.SignInViewModelFactory
@@ -225,6 +227,12 @@ fun MeBudgetNavHost(
                     val syncDeps = context.applicationContext.syncDependencies()
                     val syncState by syncDeps.syncEngine.syncState.collectAsState()
                     val scope = rememberCoroutineScope()
+                    val featureGate = remember {
+                        FeatureGate(
+                            isSignedIn = { false },
+                            isPro = { false }
+                        )
+                    }
                     BudgetsScreen(
                         budgets = budgetsUiState.budgets,
                         onOpenBudget = { budgetId ->
@@ -238,6 +246,10 @@ fun MeBudgetNavHost(
                         syncState = syncState,
                         onSyncRetry = {
                             scope.launch { syncDeps.syncEngine.syncNow() }
+                        },
+                        canCreateBudget = featureGate.canCreateBudget(budgetsUiState.budgets.size),
+                        onUpgradeClick = {
+                            navController.navigate(MeBudgetRoute.subscription)
                         }
                     )
                 }
