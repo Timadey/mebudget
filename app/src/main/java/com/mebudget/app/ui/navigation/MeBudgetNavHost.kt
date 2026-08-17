@@ -323,7 +323,11 @@ fun MeBudgetNavHost(
                         },
                         canCreateBudget = gate.canCreateBudget(budgetsUiState.budgets.size),
                         onUpgradeClick = {
-                            navController.navigate(MeBudgetRoute.subscription)
+                            if (syncDeps.authManager.authState.value.isSignedIn) {
+                                navController.navigate(MeBudgetRoute.subscription)
+                            } else {
+                                navController.navigate(MeBudgetRoute.profile)
+                            }
                         }
                     )
                 }

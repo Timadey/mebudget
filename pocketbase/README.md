@@ -143,6 +143,14 @@ curl -X POST http://127.0.0.1:8090/api/collections/config/records \
 
 ## Paystack Webhook
 
+Subscriptions are purchased via a hosted Paystack payment page. The client asks
+`POST /api/subscriptions/checkout` (auth required, plan in body) and shows the
+returned `authorization_url` in an in-app WebView. Prices come from the
+`config` "plans" record (see `pocketbase/seed/default_plans.json`); the
+checkout hook resolves the price server-side and records `metadata.plan` on the
+transaction, which the webhook prefers when granting Pro. The Paystack secret
+key never leaves the server.
+
 PocketBase processes Paystack webhook events (e.g. `subscription.create`, `charge.success`) via the JS hook in `pocketbase/pb_hooks/paystack.pb.js`.
 
 > **Note:** PocketBase only auto-loads hook files with a `*.pb.js` suffix. Keep the
