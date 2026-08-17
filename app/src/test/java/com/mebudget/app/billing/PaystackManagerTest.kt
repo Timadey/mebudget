@@ -1,34 +1,35 @@
 package com.mebudget.app.billing
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PaystackManagerTest {
 
-    private val paystackManager = PaystackManager(publicKey = "pk_test_dummy")
-
     @Test
-    fun `can get available plans`() {
-        val plans = paystackManager.getAvailablePlans()
-        assertEquals(2, plans.size)
+    fun `billing plan defaults match legacy prices`() {
+        assertEquals("pro_monthly", BillingPlan.MONTHLY.id)
+        assertEquals("monthly", BillingPlan.MONTHLY.interval)
+        assertEquals(150000L, BillingPlan.MONTHLY.price)
+        assertEquals("pro_annual", BillingPlan.ANNUAL.id)
+        assertEquals("annually", BillingPlan.ANNUAL.interval)
+        assertEquals(1440000L, BillingPlan.ANNUAL.price)
     }
 
     @Test
-    fun `plans expose pro ids`() {
-        val ids = paystackManager.getAvailablePlans().map { it.id }.toSet()
-        assertEquals(setOf("pro_monthly", "pro_annual"), ids)
+    fun `fromId resolves known plans and rejects unknown`() {
+        assertEquals(BillingPlan.MONTHLY, BillingPlan.fromId("pro_monthly"))
+        assertEquals(BillingPlan.ANNUAL, BillingPlan.fromId("pro_annual"))
+        assertNull(BillingPlan.fromId("nope"))
     }
 
     @Test
-    fun `plan lookup by id works`() {
-        assertTrue(BillingPlan.fromId("pro_monthly") == BillingPlan.Monthly)
-        assertTrue(BillingPlan.fromId("pro_annual") == BillingPlan.Annual)
-        assertEquals(null, BillingPlan.fromId("nope"))
+    fun `defaults list contains both plans`() {
+        assertEquals(listOf(BillingPlan.MONTHLY, BillingPlan.ANNUAL), BillingPlan.DEFAULTS)
     }
 
     @Test
-    fun `annual plan is discounted per month`() {
-        assertEquals(BillingPlan.Annual.price / 12, 120000L)
+    fun `annual per-month equivalent is 120000`() {
+        assertEquals(120000L, BillingPlan.ANNUAL.price / 12)
     }
 }

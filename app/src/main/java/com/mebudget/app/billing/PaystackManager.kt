@@ -21,7 +21,7 @@ class PaystackManager(
     private val publicKey: String
 ) {
     val plans: List<BillingPlan>
-        get() = listOf(BillingPlan.Monthly, BillingPlan.Annual)
+        get() = BillingPlan.DEFAULTS
 
     /** Must be called once, before any transaction. Safe to call multiple times. */
     fun initialize() {

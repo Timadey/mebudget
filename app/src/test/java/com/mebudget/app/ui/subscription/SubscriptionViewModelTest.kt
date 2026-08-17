@@ -38,7 +38,7 @@ class SubscriptionViewModelTest {
 
     @Test
     fun `loads plans on init`() {
-        coEvery { paystackManager.getAvailablePlans() } returns listOf(BillingPlan.Monthly, BillingPlan.Annual)
+        coEvery { paystackManager.getAvailablePlans() } returns listOf(BillingPlan.MONTHLY, BillingPlan.ANNUAL)
 
         val viewModel = SubscriptionViewModel(paystackManager)
 
@@ -49,15 +49,15 @@ class SubscriptionViewModelTest {
     fun `selecting plan updates state`() {
         val viewModel = SubscriptionViewModel(paystackManager)
 
-        viewModel.selectPlan(BillingPlan.Annual)
+        viewModel.selectPlan(BillingPlan.ANNUAL)
 
-        assertEquals(BillingPlan.Annual, viewModel.uiState.value.selectedPlan)
+        assertEquals(BillingPlan.ANNUAL, viewModel.uiState.value.selectedPlan)
     }
 
     @Test
     fun `subscribe without card is not submitted`() = runTest(dispatcher) {
         val viewModel = SubscriptionViewModel(paystackManager)
-        viewModel.selectPlan(BillingPlan.Monthly)
+        viewModel.selectPlan(BillingPlan.MONTHLY)
 
         viewModel.subscribe(mockk<Activity>())
         dispatcher.scheduler.advanceUntilIdle()
@@ -72,7 +72,7 @@ class SubscriptionViewModelTest {
             mockk<Transaction>()
         )
         val viewModel = SubscriptionViewModel(paystackManager)
-        viewModel.selectPlan(BillingPlan.Monthly)
+        viewModel.selectPlan(BillingPlan.MONTHLY)
         viewModel.onEmailChanged("a@b.com")
         viewModel.onCardNumberChanged("4084084084084081")
         viewModel.onExpiryMonthChanged("01")
@@ -92,7 +92,7 @@ class SubscriptionViewModelTest {
             RuntimeException("Declined")
         )
         val viewModel = SubscriptionViewModel(paystackManager)
-        viewModel.selectPlan(BillingPlan.Monthly)
+        viewModel.selectPlan(BillingPlan.MONTHLY)
         viewModel.onEmailChanged("a@b.com")
         viewModel.onCardNumberChanged("4084084084084081")
         viewModel.onExpiryMonthChanged("01")
