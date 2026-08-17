@@ -44,6 +44,9 @@ import com.mebudget.app.ui.auth.SignInViewModel
 import com.mebudget.app.ui.auth.SignInViewModelFactory
 import com.mebudget.app.ui.auth.SignUpScreen
 import com.mebudget.app.ui.auth.authManager
+import com.mebudget.app.ui.profile.ProfileScreen
+import com.mebudget.app.ui.profile.ProfileViewModel
+import com.mebudget.app.ui.profile.ProfileViewModelFactory
 import com.mebudget.app.data.sync.syncDependencies
 import com.mebudget.app.ui.subscription.SubscriptionScreen
 import com.mebudget.app.ui.subscription.SubscriptionViewModel
@@ -313,6 +316,19 @@ fun MeBudgetNavHost(
                     MergeDialog(
                         viewModel = mergeViewModel,
                         onDismiss = { navController.popBackStack() }
+                    )
+                }
+
+                composable(MeBudgetRoute.profile) {
+                    val profileViewModel: ProfileViewModel = viewModel(
+                        factory = ProfileViewModelFactory(
+                            context.applicationContext.authManager()
+                        )
+                    )
+                    ProfileScreen(
+                        viewModel = profileViewModel,
+                        onSignInClick = { navController.navigate(MeBudgetRoute.signIn) },
+                        onSubscriptionClick = { navController.navigate(MeBudgetRoute.subscription) }
                     )
                 }
 
