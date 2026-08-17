@@ -1,0 +1,21 @@
+# MeBudget PocketBase — build from this repo (includes pb_hooks + pb_migrations).
+#
+# Use with Coolify: create a resource → GitHub/GitLab repo → **Docker Compose**
+# build pack, or run `docker compose up -d` locally.
+
+services:
+  pocketbase:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      # Secret key used to verify Paystack webhook signatures. Set in Coolify's
+      # Environment Variables tab (or a .env next to this file).
+      - POCKETBASE_PAYSTACK_SECRET_KEY=${POCKETBASE_PAYSTACK_SECRET_KEY:?set this}
+    volumes:
+      # Coolify: add a persistent volume mapped to /pb/pb_data, or use this
+      # bind mount locally so the SQLite DB survives restarts.
+      - ./pb_data:/pb/pb_data

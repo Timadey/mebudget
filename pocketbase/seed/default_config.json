@@ -1,0 +1,8 @@
+{
+  "key": "limits",
+  "value": {
+    "freeMaxBudgets": 2,
+    "freeMaxWalletsPerBudget": 5,
+    "freeMaxTransactionsPerMonth": 100
+  }
+}

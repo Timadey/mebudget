@@ -33,4 +33,13 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE id = :transactionId LIMIT 1")
     suspend fun getTransaction(transactionId: Long): TransactionEntity?
+
+    @Query("SELECT * FROM transactions")
+    suspend fun getAllTransactions(): List<TransactionEntity>
+
+    @Query("DELETE FROM transactions")
+    suspend fun clearAll()
+
+    @Query("SELECT COUNT(*) FROM transactions")
+    suspend fun count(): Int
 }

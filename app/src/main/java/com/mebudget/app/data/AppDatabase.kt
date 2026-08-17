@@ -22,8 +22,13 @@ class Converters {
 }
 
 @Database(
-    entities = [BudgetEntity::class, WalletEntity::class, TransactionEntity::class],
-    version = 1,
+    entities = [
+        BudgetEntity::class,
+        WalletEntity::class,
+        TransactionEntity::class,
+        SyncMetadataEntity::class
+    ],
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -31,6 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun walletDao(): WalletDao
     abstract fun transactionDao(): TransactionDao
+    abstract fun syncMetadataDao(): SyncMetadataDao
 
     companion object {
         @Volatile
@@ -42,8 +48,28 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "mebudget.db"
-                ).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2)
+                    .build().also { INSTANCE = it }
             }
+        }
+
+        val MIGRATION_1_2 = androidx.room.migration.Migration(1, 2) { db ->
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `sync_metadata` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `entityType` TEXT NOT NULL,
+                    `localId` INTEGER NOT NULL,
+                    `remoteId` TEXT,
+                    `deleted` INTEGER NOT NULL,
+                    `lastSyncedAtMillis` INTEGER,
+                    `lastError` TEXT
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_metadata_localId ON sync_metadata (localId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_metadata_remoteId ON sync_metadata (remoteId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_metadata_entityType ON sync_metadata (entityType)")
         }
     }
 }

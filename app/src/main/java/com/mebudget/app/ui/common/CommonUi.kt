@@ -14,9 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -125,7 +124,7 @@ fun PrivacyToggleButton(
 ) {
     IconButton(onClick = onTogglePrivacyMode) {
         Icon(
-            imageVector = if (privacyModeEnabled) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+            imageVector = if (privacyModeEnabled) Icons.Default.Close else Icons.Default.Info,
             contentDescription = if (privacyModeEnabled) "Show amounts" else "Hide amounts"
         )
     }
@@ -204,7 +203,7 @@ fun DateInputField(
                 label = { Text(label) },
                 placeholder = { Text("Select date") },
                 trailingIcon = {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                    Icon(Icons.Default.Info, contentDescription = null)
                 },
                 modifier = Modifier.fillMaxWidth()
             )

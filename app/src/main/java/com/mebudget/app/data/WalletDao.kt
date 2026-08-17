@@ -36,4 +36,13 @@ interface WalletDao {
 
     @Query("SELECT * FROM wallets WHERE budgetId = :budgetId ORDER BY sortOrder ASC, id ASC")
     suspend fun getWalletsForBudget(budgetId: Long): List<WalletEntity>
+
+    @Query("SELECT * FROM wallets")
+    suspend fun getAllWallets(): List<WalletEntity>
+
+    @Query("DELETE FROM wallets")
+    suspend fun clearAll()
+
+    @Query("SELECT COUNT(*) FROM wallets")
+    suspend fun count(): Int
 }

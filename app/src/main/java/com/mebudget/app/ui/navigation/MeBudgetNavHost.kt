@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,13 +24,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,8 +43,29 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.mebudget.app.data.BudgetEntity
+import com.mebudget.app.billing.FeatureGate
+import com.mebudget.app.data.sync.LimitsConfigManager
+import com.mebudget.app.ui.auth.SignInScreen
+import com.mebudget.app.ui.auth.SignInViewModel
+import com.mebudget.app.ui.auth.SignInViewModelFactory
+import com.mebudget.app.ui.auth.SignUpScreen
+import com.mebudget.app.ui.auth.authManager
+import com.mebudget.app.ui.profile.ProfileScreen
+import com.mebudget.app.ui.profile.ProfileViewModel
+import com.mebudget.app.ui.profile.ProfileViewModelFactory
+import com.mebudget.app.data.sync.syncDependencies
+import com.mebudget.app.ui.subscription.SubscriptionScreen
+import com.mebudget.app.ui.subscription.SubscriptionViewModel
+import com.mebudget.app.ui.subscription.SubscriptionViewModelFactory
+import com.mebudget.app.ui.subscription.paystackManager
+import com.mebudget.app.ui.sync.MergeDialog
+import com.mebudget.app.ui.sync.MergeViewModel
+import com.mebudget.app.ui.sync.MergeViewModelFactory
 import com.mebudget.app.ui.navigation.MeBudgetRoute
 import com.mebudget.app.ui.theme.AccentBlue
+
+/** PocketBase user JWTs are short-lived; renew well before they expire. */
+private const val TOKEN_REFRESH_INTERVAL_MS = 45 * 60 * 1000L
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,6 +108,27 @@ fun MeBudgetNavHost(
         MeBudgetRoute.budgets,
         MeBudgetRoute.globalInsights
     )
+
+    val syncDeps = remember { context.applicationContext.syncDependencies() }
+
+    // Session + realtime lifecycle: restore the persisted session once, then
+    // react to sign-in/out by starting/stopping the live stream and renewing
+    // the PocketBase auth token while signed in. Keying on the auth state means
+    // the refresh loop is cancelled automatically on sign-out.
+    LaunchedEffect(Unit) { syncDeps.authManager.restoreSession() }
+    val authState by syncDeps.authManager.authState.collectAsState()
+    LaunchedEffect(authState) {
+        if (authState.isSignedIn) {
+            syncDeps.subscriptionManager.refresh()
+            syncDeps.syncEngine.startRealtimeUpdates()
+            while (true) {
+                kotlinx.coroutines.delay(TOKEN_REFRESH_INTERVAL_MS)
+                syncDeps.authManager.refreshAuth()
+            }
+        } else {
+            syncDeps.syncEngine.stopRealtimeUpdates()
+        }
+    }
 
     LaunchedEffect(budgetsUiState.pendingBudgetIdToOpen, currentRoute) {
         val selectedBudgetId = budgetsUiState.pendingBudgetIdToOpen ?: return@LaunchedEffect
@@ -165,7 +212,7 @@ fun MeBudgetNavHost(
                         },
                         icon = {
                             Icon(
-                                Icons.Default.Analytics,
+                                Icons.Default.Info,
                                 contentDescription = "Insights",
                                 modifier = Modifier.size(28.dp),
                                 tint = if (currentRoute == MeBudgetRoute.globalInsights) {
@@ -202,17 +249,41 @@ fun MeBudgetNavHost(
                 startDestination = MeBudgetRoute.budgets
             ) {
                 composable(MeBudgetRoute.budgets) {
-                        BudgetsScreen(
-                            budgets = budgetsUiState.budgets,
-                            onOpenBudget = { budgetId ->
-                                onOpenBudget(budgetId)
-                                navController.navigate(MeBudgetRoute.budget(budgetId))
-                            },
-                            privacyModeEnabled = privacyModeEnabled,
-                            onCreateBudget = onCreateBudget,
-                            onDuplicateBudget = onDuplicateBudget,
-                            onDeleteBudget = onDeleteBudget
+                    val syncDeps = context.applicationContext.syncDependencies()
+                    val syncState by syncDeps.syncEngine.syncState.collectAsState()
+                    val scope = rememberCoroutineScope()
+                    val limitsConfigManager = remember { LimitsConfigManager(syncDeps.client) }
+                    val limits by limitsConfigManager.limits.collectAsState()
+                    val gate = remember(limits) {
+                        FeatureGate(
+                            isSignedIn = { syncDeps.authManager.authState.value.isSignedIn },
+                            isPro = { syncDeps.subscriptionManager.isPro.value },
+                            limits = limits
                         )
+                    }
+                    LaunchedEffect(Unit) {
+                        limitsConfigManager.refreshLimits()
+                        syncDeps.subscriptionManager.refresh()
+                    }
+                    BudgetsScreen(
+                        budgets = budgetsUiState.budgets,
+                        onOpenBudget = { budgetId ->
+                            onOpenBudget(budgetId)
+                            navController.navigate(MeBudgetRoute.budget(budgetId))
+                        },
+                        privacyModeEnabled = privacyModeEnabled,
+                        onCreateBudget = onCreateBudget,
+                        onDuplicateBudget = onDuplicateBudget,
+                        onDeleteBudget = onDeleteBudget,
+                        syncState = syncState,
+                        onSyncRetry = {
+                            scope.launch { syncDeps.syncEngine.syncNow() }
+                        },
+                        canCreateBudget = gate.canCreateBudget(budgetsUiState.budgets.size),
+                        onUpgradeClick = {
+                            navController.navigate(MeBudgetRoute.subscription)
+                        }
+                    )
                 }
 
                 composable(MeBudgetRoute.globalInsights) {
@@ -245,6 +316,78 @@ fun MeBudgetNavHost(
                         onOpenUsageSettings = {
                             context.startActivity(quickSpendUsageSettingsIntent())
                         }
+                    )
+                }
+
+                composable(MeBudgetRoute.signIn) {
+                    val signInViewModel: SignInViewModel = viewModel(
+                        factory = SignInViewModelFactory(
+                            context.applicationContext.authManager()
+                        )
+                    )
+                    SignInScreen(
+                        viewModel = signInViewModel,
+                        onSignInSuccess = { navController.popBackStack() },
+                        onSignUpClick = {
+                            navController.navigate(MeBudgetRoute.signUp)
+                        },
+                        onContinueWithoutSignIn = { navController.popBackStack() }
+                    )
+                }
+
+                composable(MeBudgetRoute.signUp) {
+                    val signUpViewModel: SignInViewModel = viewModel(
+                        factory = SignInViewModelFactory(
+                            context.applicationContext.authManager()
+                        )
+                    )
+                    SignUpScreen(
+                        viewModel = signUpViewModel,
+                        onSignUpSuccess = { navController.popBackStack() },
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(MeBudgetRoute.subscription) {
+                    val subscriptionViewModel: SubscriptionViewModel = viewModel(
+                        factory = SubscriptionViewModelFactory(
+                            context.applicationContext.paystackManager()
+                        )
+                    )
+                    val scope = rememberCoroutineScope()
+                    SubscriptionScreen(
+                        viewModel = subscriptionViewModel,
+                        onSubscribeSuccess = {
+                            scope.launch { syncDeps.subscriptionManager.refresh() }
+                            navController.popBackStack()
+                        },
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(MeBudgetRoute.syncMerge) {
+                    val mergeViewModel: MergeViewModel = viewModel(
+                        factory = MergeViewModelFactory(
+                            context.applicationContext.syncDependencies().syncEngine
+                        )
+                    )
+                    MergeDialog(
+                        viewModel = mergeViewModel,
+                        onDismiss = { navController.popBackStack() }
+                    )
+                }
+
+                composable(MeBudgetRoute.profile) {
+                    val profileViewModel: ProfileViewModel = viewModel(
+                        factory = ProfileViewModelFactory(
+                            authManager = context.applicationContext.authManager(),
+                            isPro = { syncDeps.subscriptionManager.isPro.value }
+                        )
+                    )
+                    ProfileScreen(
+                        viewModel = profileViewModel,
+                        onSignInClick = { navController.navigate(MeBudgetRoute.signIn) },
+                        onSubscriptionClick = { navController.navigate(MeBudgetRoute.subscription) }
                     )
                 }
 

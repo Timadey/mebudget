@@ -11,6 +11,11 @@ object MeBudgetRoute {
     const val globalWallet = "global-wallet"
     const val globalTransfer = "global-transfer"
     const val quickSpendSettings = "quick-spend-settings"
+    const val signIn = "auth/sign-in"
+    const val signUp = "auth/sign-up"
+    const val subscription = "subscription"
+    const val syncMerge = "sync/merge"
+    const val profile = "profile"
 
     fun budget(budgetId: Long): String = "$budget/$budgetId"
     fun wallet(budgetId: Long, walletId: Long): String = "$budget/$budgetId/$wallet/$walletId"
