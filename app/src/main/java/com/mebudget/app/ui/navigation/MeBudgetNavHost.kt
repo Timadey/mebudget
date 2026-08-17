@@ -46,6 +46,7 @@ import androidx.navigation.navArgument
 import com.mebudget.app.data.BudgetEntity
 import com.mebudget.app.billing.FeatureGate
 import com.mebudget.app.data.sync.LimitsConfigManager
+import com.mebudget.app.data.sync.PricingConfigManager
 import com.mebudget.app.ui.auth.SignInScreen
 import com.mebudget.app.ui.auth.SignInViewModel
 import com.mebudget.app.ui.auth.SignInViewModelFactory
@@ -58,7 +59,6 @@ import com.mebudget.app.data.sync.syncDependencies
 import com.mebudget.app.ui.subscription.SubscriptionScreen
 import com.mebudget.app.ui.subscription.SubscriptionViewModel
 import com.mebudget.app.ui.subscription.SubscriptionViewModelFactory
-import com.mebudget.app.ui.subscription.paystackManager
 import com.mebudget.app.ui.sync.MergeDialog
 import com.mebudget.app.ui.sync.MergeViewModel
 import com.mebudget.app.ui.sync.MergeViewModelFactory
@@ -393,9 +393,12 @@ fun MeBudgetNavHost(
                 }
 
                 composable(MeBudgetRoute.subscription) {
+                    val syncDeps = context.applicationContext.syncDependencies()
+                    val pricingConfigManager = remember { PricingConfigManager(syncDeps.client) }
                     val subscriptionViewModel: SubscriptionViewModel = viewModel(
                         factory = SubscriptionViewModelFactory(
-                            context.applicationContext.paystackManager()
+                            pricingConfigManager = pricingConfigManager,
+                            pocketBaseClient = syncDeps.client
                         )
                     )
                     val scope = rememberCoroutineScope()

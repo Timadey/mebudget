@@ -1,100 +1,88 @@
 package com.mebudget.app.ui.subscription
 
-import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.JsonObject
 import com.mebudget.app.billing.BillingPlan
-import com.mebudget.app.billing.PaystackManager
-import co.paystack.android.model.Card
+import com.mebudget.app.data.sync.PocketBaseClient
+import com.mebudget.app.data.sync.PricingConfigManager
+import com.mebudget.app.data.sync.models.CheckoutResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class SubscriptionUiState(
-    val plans: List<BillingPlan> = emptyList(),
+    val plans: List<BillingPlan> = BillingPlan.DEFAULTS,
     val selectedPlan: BillingPlan? = null,
-    val email: String = "",
-    val cardNumber: String = "",
-    val expiryMonth: String = "",
-    val expiryYear: String = "",
-    val cvv: String = "",
+    val checkoutUrl: String? = null,
+    val isActivating: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
     val isSuccess: Boolean = false
 )
 
 class SubscriptionViewModel(
-    private val paystackManager: PaystackManager
+    private val pricingConfigManager: PricingConfigManager,
+    private val pocketBaseClient: PocketBaseClient
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
-        SubscriptionUiState(plans = paystackManager.getAvailablePlans())
+        SubscriptionUiState(plans = pricingConfigManager.plans.value)
     )
     val uiState: StateFlow<SubscriptionUiState> = _uiState
+
+    init {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(plans = pricingConfigManager.plans.first())
+            pricingConfigManager.refreshPlans()
+            _uiState.value = _uiState.value.copy(plans = pricingConfigManager.plans.value)
+        }
+    }
 
     fun selectPlan(plan: BillingPlan) {
         _uiState.value = _uiState.value.copy(selectedPlan = plan)
     }
 
-    fun onEmailChanged(email: String) {
-        _uiState.value = _uiState.value.copy(email = email)
-    }
-
-    fun onCardNumberChanged(cardNumber: String) {
-        _uiState.value = _uiState.value.copy(cardNumber = cardNumber)
-    }
-
-    fun onExpiryMonthChanged(value: String) {
-        _uiState.value = _uiState.value.copy(expiryMonth = value)
-    }
-
-    fun onExpiryYearChanged(value: String) {
-        _uiState.value = _uiState.value.copy(expiryYear = value)
-    }
-
-    fun onCvvChanged(value: String) {
-        _uiState.value = _uiState.value.copy(cvv = value)
-    }
-
-    fun subscribe(activity: Activity) {
-        val state = _uiState.value
-        val plan = state.selectedPlan ?: return
-
-        val card = try {
-            Card.Builder(
-                state.cardNumber,
-                state.expiryMonth.toInt(),
-                state.expiryYear.toInt(),
-                state.cvv
-            ).build()
-        } catch (e: Exception) {
-            _uiState.value = _uiState.value.copy(error = "Check the card details and try again.")
-            return
-        }
-
-        if (!card.isValid) {
-            _uiState.value = _uiState.value.copy(error = "That card looks invalid. Check the details and try again.")
-            return
-        }
-
+    /** Asks the server to initialize a Paystack checkout; opens the WebView on success. */
+    fun startCheckout() {
+        val plan = _uiState.value.selectedPlan ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            val result = paystackManager.chargeCard(
-                activity = activity,
-                amount = plan.price,
-                email = state.email.trim(),
-                card = card
-            )
+            val result = runCatching {
+                pocketBaseClient.api.createCheckout(
+                    JsonObject().apply { addProperty("plan", plan.id) }
+                )
+            }
             result.fold(
-                onSuccess = {
-                    _uiState.value = _uiState.value.copy(isLoading = false, isSuccess = true)
+                onSuccess = { response: CheckoutResponse ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        checkoutUrl = response.authorizationUrl
+                    )
                 },
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = e.message ?: "Subscription failed. Try again."
+                        error = e.message ?: "Failed to start checkout. Try again."
                     )
                 }
             )
         }
+    }
+
+    /** Confirmed by the WebView on /checkout-success. */
+    fun onPaymentSucceeded() {
+        _uiState.value = _uiState.value.copy(checkoutUrl = null, isActivating = true)
+        viewModelScope.launch {
+            // Brief activation delay so the webhook can grant Pro before refresh.
+            kotlinx.coroutines.delay(2000)
+            _uiState.value = _uiState.value.copy(isActivating = false, isSuccess = true)
+        }
+    }
+
+    /** WebView hit /checkout-cancel or the user abandoned. */
+    fun onPaymentCanceled() {
+        _uiState.value = _uiState.value.copy(checkoutUrl = null, error = "Payment was cancelled.")
     }
 }
