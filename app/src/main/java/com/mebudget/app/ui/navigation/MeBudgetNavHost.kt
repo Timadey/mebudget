@@ -24,14 +24,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -219,17 +222,24 @@ fun MeBudgetNavHost(
                 startDestination = MeBudgetRoute.budgets
             ) {
                 composable(MeBudgetRoute.budgets) {
-                        BudgetsScreen(
-                            budgets = budgetsUiState.budgets,
-                            onOpenBudget = { budgetId ->
-                                onOpenBudget(budgetId)
-                                navController.navigate(MeBudgetRoute.budget(budgetId))
-                            },
-                            privacyModeEnabled = privacyModeEnabled,
-                            onCreateBudget = onCreateBudget,
-                            onDuplicateBudget = onDuplicateBudget,
-                            onDeleteBudget = onDeleteBudget
-                        )
+                    val syncDeps = context.applicationContext.syncDependencies()
+                    val syncState by syncDeps.syncEngine.syncState.collectAsState()
+                    val scope = rememberCoroutineScope()
+                    BudgetsScreen(
+                        budgets = budgetsUiState.budgets,
+                        onOpenBudget = { budgetId ->
+                            onOpenBudget(budgetId)
+                            navController.navigate(MeBudgetRoute.budget(budgetId))
+                        },
+                        privacyModeEnabled = privacyModeEnabled,
+                        onCreateBudget = onCreateBudget,
+                        onDuplicateBudget = onDuplicateBudget,
+                        onDeleteBudget = onDeleteBudget,
+                        syncState = syncState,
+                        onSyncRetry = {
+                            scope.launch { syncDeps.syncEngine.syncNow() }
+                        }
+                    )
                 }
 
                 composable(MeBudgetRoute.globalInsights) {

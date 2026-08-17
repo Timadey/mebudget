@@ -40,12 +40,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mebudget.app.data.BudgetSummary
+import com.mebudget.app.data.sync.SyncState
 import com.mebudget.app.ui.theme.BrutalistBudgetTheme
 import androidx.compose.ui.text.style.TextAlign
 import com.mebudget.app.ui.common.offsetShadow
 import com.mebudget.app.ui.common.SectionHeader
 import com.mebudget.app.ui.common.BudgetStatusIndicator
 import com.mebudget.app.ui.common.BudgetStatus
+import com.mebudget.app.ui.common.SyncStatusBanner
 import com.mebudget.app.ui.theme.AccentBlue
 
 @Composable
@@ -55,7 +57,9 @@ fun BudgetsScreen(
     privacyModeEnabled: Boolean,
     onCreateBudget: (BudgetDraft) -> Unit,
     onDuplicateBudget: (Long, String) -> Unit,
-    onDeleteBudget: (Long) -> Unit
+    onDeleteBudget: (Long) -> Unit,
+    syncState: SyncState = SyncState.Idle,
+    onSyncRetry: () -> Unit = {}
 ) {
     var showCreateOptions by rememberSaveable { mutableStateOf(false) }
     var showBlankBudgetDialog by rememberSaveable { mutableStateOf(false) }
@@ -75,6 +79,15 @@ fun BudgetsScreen(
                 if (privacyModeEnabled) {
                     item {
                         PrivacyModeBanner()
+                    }
+                }
+
+                if (syncState !is SyncState.Idle) {
+                    item {
+                        SyncStatusBanner(
+                            syncState = syncState,
+                            onRetryClick = onSyncRetry
+                        )
                     }
                 }
 
