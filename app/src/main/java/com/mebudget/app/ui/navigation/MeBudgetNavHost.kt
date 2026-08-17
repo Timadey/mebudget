@@ -378,7 +378,9 @@ fun MeBudgetNavHost(
                     )
                     SignUpScreen(
                         viewModel = signUpViewModel,
-                        onSignUpSuccess = { navController.popBackStack() },
+                        onSignUpSuccess = {
+                            navController.popBackStack(MeBudgetRoute.profile, inclusive = false)
+                        },
                         onBack = { navController.popBackStack() }
                     )
                 }
