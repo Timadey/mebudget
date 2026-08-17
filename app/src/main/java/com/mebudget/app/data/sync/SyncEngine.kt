@@ -52,6 +52,62 @@ class SyncEngine(
     /** True while the realtime SSE stream is connected. */
     val isListening get() = realtimeListener.isListening
 
+    // ------------------------------------------------------------------
+    // First-sync merge support
+    // ------------------------------------------------------------------
+
+    /** Counts of budgets/wallets/transactions stored locally on this device. */
+    suspend fun getLocalDataCounts(): SyncDataCounts = SyncDataCounts(
+        budgets = budgetDao.count(),
+        wallets = walletDao.count(),
+        transactions = transactionDao.count()
+    )
+
+    /** Counts of budgets/wallets/transactions currently on the server. */
+    suspend fun getCloudDataCounts(): SyncDataCounts {
+        val auth = authManager.authState.first()
+        if (auth !is com.mebudget.app.data.auth.AuthState.SignedIn) {
+            return SyncDataCounts(0, 0, 0)
+        }
+        return SyncDataCounts(
+            budgets = fetchAll("budgets").size,
+            wallets = fetchAll("wallets").size,
+            transactions = fetchAll("transactions").size
+        )
+    }
+
+    /** Push this device's data to the cloud, leaving nothing else to merge. */
+    suspend fun uploadLocalData(): Result<Unit> = runMerge {
+        pushLocalChanges()
+    }
+
+    /** Replace local data with whatever is on the server. */
+    suspend fun downloadCloudData(): Result<Unit> = runMerge {
+        budgetDao.clearAll()
+        walletDao.clearAll()
+        transactionDao.clearAll()
+        metadataDao.clearAll()
+        pullRemoteChanges()
+    }
+
+    /** Combine local and cloud data using last-write-wins conflict resolution. */
+    suspend fun mergeLocalAndCloud(): Result<Unit> = runMerge {
+        pushLocalChanges()
+        pullRemoteChanges()
+    }
+
+    private suspend fun runMerge(block: suspend () -> Unit): Result<Unit> {
+        _syncState.value = SyncState.Syncing
+        return try {
+            block()
+            _syncState.value = SyncState.Idle
+            Result.success(Unit)
+        } catch (e: Exception) {
+            _syncState.value = SyncState.Error(e.message ?: "Merge failed")
+            Result.failure(e)
+        }
+    }
+
     suspend fun syncNow(): Result<Unit> {
         val auth = authManager.authState.first()
         if (auth !is com.mebudget.app.data.auth.AuthState.SignedIn) {
@@ -426,3 +482,10 @@ class SyncEngine(
         else -> this
     }
 }
+
+/** Counts of synced rows on one side (device or cloud) of a first-time merge. */
+data class SyncDataCounts(
+    val budgets: Int,
+    val wallets: Int,
+    val transactions: Int
+)

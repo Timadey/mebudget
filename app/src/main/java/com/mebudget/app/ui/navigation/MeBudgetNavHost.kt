@@ -44,10 +44,14 @@ import com.mebudget.app.ui.auth.SignInViewModel
 import com.mebudget.app.ui.auth.SignInViewModelFactory
 import com.mebudget.app.ui.auth.SignUpScreen
 import com.mebudget.app.ui.auth.authManager
+import com.mebudget.app.data.sync.syncDependencies
 import com.mebudget.app.ui.subscription.SubscriptionScreen
 import com.mebudget.app.ui.subscription.SubscriptionViewModel
 import com.mebudget.app.ui.subscription.SubscriptionViewModelFactory
 import com.mebudget.app.ui.subscription.paystackManager
+import com.mebudget.app.ui.sync.MergeDialog
+import com.mebudget.app.ui.sync.MergeViewModel
+import com.mebudget.app.ui.sync.MergeViewModelFactory
 import com.mebudget.app.ui.navigation.MeBudgetRoute
 import com.mebudget.app.ui.theme.AccentBlue
 
@@ -297,6 +301,18 @@ fun MeBudgetNavHost(
                         viewModel = subscriptionViewModel,
                         onSubscribeSuccess = { navController.popBackStack() },
                         onBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(MeBudgetRoute.syncMerge) {
+                    val mergeViewModel: MergeViewModel = viewModel(
+                        factory = MergeViewModelFactory(
+                            context.applicationContext.syncDependencies().syncEngine
+                        )
+                    )
+                    MergeDialog(
+                        viewModel = mergeViewModel,
+                        onDismiss = { navController.popBackStack() }
                     )
                 }
 

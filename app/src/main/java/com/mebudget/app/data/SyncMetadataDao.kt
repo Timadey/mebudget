@@ -30,4 +30,7 @@ interface SyncMetadataDao {
 
     @Delete
     suspend fun delete(metadata: SyncMetadataEntity)
+
+    @Query("DELETE FROM sync_metadata")
+    suspend fun clearAll()
 }

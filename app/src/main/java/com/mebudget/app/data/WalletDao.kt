@@ -39,4 +39,10 @@ interface WalletDao {
 
     @Query("SELECT * FROM wallets")
     suspend fun getAllWallets(): List<WalletEntity>
+
+    @Query("DELETE FROM wallets")
+    suspend fun clearAll()
+
+    @Query("SELECT COUNT(*) FROM wallets")
+    suspend fun count(): Int
 }

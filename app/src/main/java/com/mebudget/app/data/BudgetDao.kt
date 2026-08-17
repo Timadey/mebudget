@@ -30,5 +30,11 @@ interface BudgetDao {
 
     @Query("SELECT * FROM budgets")
     suspend fun getAllBudgets(): List<BudgetEntity>
+
+    @Query("DELETE FROM budgets")
+    suspend fun clearAll()
+
+    @Query("SELECT COUNT(*) FROM budgets")
+    suspend fun count(): Int
 }
 
