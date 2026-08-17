@@ -66,11 +66,19 @@ routerAdd("POST", "/api/paystack/webhook", (e) => {
   }
 
   // --- Resolve plan -----------------------------------------------------------
-  const sub = (data.subscription || {}).plan || data.plan || {};
-  const interval = sub.interval || null;
+  // 1) Prefer the plan recorded in the checkout metadata (set by checkout.pb.js).
+  // 2) Fall back to Paystack subscription interval/amount heuristics.
   let planId = null;
-  if (interval === "monthly") planId = "pro_monthly";
-  else if (interval === "annually" || interval === "yearly") planId = "pro_annual";
+  const metaPlan = (data.metadata || {}).plan || null;
+  if (metaPlan === "pro_monthly" || metaPlan === "pro_annual") {
+    planId = metaPlan;
+  }
+  if (!planId) {
+    const sub = (data.subscription || {}).plan || data.plan || {};
+    const interval = sub.interval || null;
+    if (interval === "monthly") planId = "pro_monthly";
+    else if (interval === "annually" || interval === "yearly") planId = "pro_annual";
+  }
   if (!planId) {
     const amount = sub.amount || data.amount || null;
     if (amount === 150000) planId = "pro_monthly";
