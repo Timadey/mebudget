@@ -13,6 +13,7 @@ object MeBudgetRoute {
     const val quickSpendSettings = "quick-spend-settings"
     const val signIn = "auth/sign-in"
     const val signUp = "auth/sign-up"
+    const val subscription = "subscription"
 
     fun budget(budgetId: Long): String = "$budget/$budgetId"
     fun wallet(budgetId: Long, walletId: Long): String = "$budget/$budgetId/$wallet/$walletId"
