@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,6 +39,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.mebudget.app.data.BudgetEntity
+import com.mebudget.app.ui.auth.SignInScreen
+import com.mebudget.app.ui.auth.SignInViewModel
+import com.mebudget.app.ui.auth.SignInViewModelFactory
+import com.mebudget.app.ui.auth.SignUpScreen
+import com.mebudget.app.ui.auth.authManager
 import com.mebudget.app.ui.navigation.MeBudgetRoute
 import com.mebudget.app.ui.theme.AccentBlue
 
@@ -245,6 +251,35 @@ fun MeBudgetNavHost(
                         onOpenUsageSettings = {
                             context.startActivity(quickSpendUsageSettingsIntent())
                         }
+                    )
+                }
+
+                composable(MeBudgetRoute.signIn) {
+                    val signInViewModel: SignInViewModel = viewModel(
+                        factory = SignInViewModelFactory(
+                            context.applicationContext.authManager()
+                        )
+                    )
+                    SignInScreen(
+                        viewModel = signInViewModel,
+                        onSignInSuccess = { navController.popBackStack() },
+                        onSignUpClick = {
+                            navController.navigate(MeBudgetRoute.signUp)
+                        },
+                        onContinueWithoutSignIn = { navController.popBackStack() }
+                    )
+                }
+
+                composable(MeBudgetRoute.signUp) {
+                    val signUpViewModel: SignInViewModel = viewModel(
+                        factory = SignInViewModelFactory(
+                            context.applicationContext.authManager()
+                        )
+                    )
+                    SignUpScreen(
+                        viewModel = signUpViewModel,
+                        onSignUpSuccess = { navController.popBackStack() },
+                        onBack = { navController.popBackStack() }
                     )
                 }
 
