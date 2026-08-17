@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mebudget.app.data.sync.SyncScheduler
 import com.mebudget.app.ui.AppViewModel
 import com.mebudget.app.ui.AppViewModelFactory
 import com.mebudget.app.ui.BudgetDetailViewModel
@@ -19,6 +20,7 @@ import com.mebudget.app.ui.theme.BrutalistBudgetTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SyncScheduler.schedulePeriodic(applicationContext)
         enableEdgeToEdge()
         setContent {
             BrutalistBudgetTheme {
