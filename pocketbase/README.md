@@ -125,6 +125,13 @@ curl -X POST http://127.0.0.1:8090/api/collections/config/records \
   -H "Authorization: Bearer <superuser-token>" \
   -H "Content-Type: application/json" \
   -d @pocketbase/seed/default_config.json
+
+# Subscription prices (kobo). Change the priceKobo values here and redeploy
+# to update in-app pricing without shipping a new APK.
+curl -X POST http://127.0.0.1:8090/api/collections/config/records \
+  -H "Authorization: Bearer <superuser-token>" \
+  -H "Content-Type: application/json" \
+  -d @pocketbase/seed/default_plans.json
 ```
 
 ## Google OAuth2 (Sign in with Google)

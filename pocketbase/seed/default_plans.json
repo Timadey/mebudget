@@ -1,0 +1,11 @@
+{
+  "key": "plans",
+  "value": {
+    "pro_monthly": {
+      "priceKobo": 150000
+    },
+    "pro_annual": {
+      "priceKobo": 1440000
+    }
+  }
+}
