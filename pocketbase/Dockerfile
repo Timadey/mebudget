@@ -2,7 +2,7 @@
 #
 # Downloads the official PocketBase binary and bakes in this repository's
 # pb_migrations + pb_hooks. Coolify deploys Docker images, so the webhook
-# (pb_hooks/paystack.js) and schema migrations are compiled into the image
+# (pb_hooks/paystack.pb.js) and schema migrations are compiled into the image
 # rather than existing on the host filesystem.
 #
 #   Version:     override with --build-arg PB_VERSION=x.y.z (default latest 0.39.x)
@@ -11,6 +11,7 @@
 
 FROM alpine:latest
 
+ARG TARGETARCH
 ARG PB_VERSION=0.39.11
 
 RUN apk add --no-cache \

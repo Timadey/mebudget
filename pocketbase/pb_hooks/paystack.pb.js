@@ -1,6 +1,10 @@
 // PocketBase JS hook: Paystack webhook → subscriptions
 //
-// Deploy alongside the PocketBase binary at pocketbase/pb_hooks/paystack.js.
+// NOTE: PocketBase only auto-loads hook files with a `*.pb.js` suffix, so this
+// file MUST stay named paystack.pb.js (a plain .js name would be treated as a
+// require()-able module and silently ignored).
+//
+// Deploy alongside the PocketBase binary at pocketbase/pb_hooks/paystack.pb.js.
 // It registers POST /api/paystack/webhook, verifies the Paystack HMAC-SHA512
 // signature over the RAW request body, then upserts an "active" row in the
 // `subscriptions` collection for the matching user (matched by email).
@@ -11,6 +15,9 @@
 // Configure the Paystack dashboard webhook URL to your public endpoint:
 //   https://pb.yourdomain.com/api/paystack/webhook
 
+// Load-time sanity log to confirm this hook file was picked up by PocketBase.
+console.log("paystack.pb.js hook: registering /api/paystack/webhook");
+
 routerAdd("POST", "/api/paystack/webhook", (e) => {
   const secret = $os.getenv("POCKETBASE_PAYSTACK_SECRET_KEY");
   if (!secret) {
@@ -19,13 +26,13 @@ routerAdd("POST", "/api/paystack/webhook", (e) => {
   }
 
   // --- Verify signature over the raw body (HMAC-SHA512, hex-encoded) ------
-  const rawBody = readerToString(e.request.body);
+  const rawBody = toString(e.request.body);
   const signature = (e.request.header.get("x-paystack-signature") || "").trim();
   const expected = $security.hs512(rawBody, secret);
 
   if (!signature || !$security.equal(signature, expected)) {
     $app.logger().warn("paystack webhook: signature mismatch");
-    return e.unauthorizedError("Invalid signature");
+    throw new UnauthorizedError("Invalid signature");
   }
 
   // --- Parse -----------------------------------------------------------------
@@ -33,7 +40,7 @@ routerAdd("POST", "/api/paystack/webhook", (e) => {
   try {
     payload = JSON.parse(rawBody);
   } catch (_) {
-    return e.badRequestError("Invalid JSON body");
+    throw new BadRequestError("Invalid JSON body");
   }
 
   const event = payload.event || "";
@@ -151,12 +158,10 @@ routerAdd("POST", "/api/paystack/webhook", (e) => {
     return e.json(200, { received: true });
   }
 
-  const form = existing
-    ? new RecordUpsertForm(e.app, existing)
-    : new RecordUpsertForm(e.app, collection);
+  const record = existing || new Record(collection);
 
   if (grant) {
-    form.loadData({
+    record.load({
       userId: user.id,
       provider: "paystack",
       plan: planId,
@@ -164,18 +169,18 @@ routerAdd("POST", "/api/paystack/webhook", (e) => {
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
     });
-    if (reference) { form.loadData({ paystackReference: reference }); }
-    if (subscriptionCode) { form.loadData({ paystackSubscriptionCode: subscriptionCode }); }
+    if (reference) { record.set("paystackReference", reference); }
+    if (subscriptionCode) { record.set("paystackSubscriptionCode", subscriptionCode); }
   } else {
-    form.loadData({ status: (event === "subscription.disable" || event === "subscription.cancel")
-      ? "cancelled" : "expired" });
+    record.set("status", (event === "subscription.disable" || event === "subscription.cancel")
+      ? "cancelled" : "expired");
   }
 
   try {
-    form.submit();
+    e.app.save(record);
   } catch (err) {
-    $app.logger().error("paystack webhook: submit failed: " + String(err));
-    return e.internalServerError("Failed to save subscription");
+    $app.logger().error("paystack webhook: save failed: " + String(err));
+    throw new InternalServerError("Failed to save subscription");
   }
 
   $app.logger().info("paystack webhook: " + event + " -> user " + user.id + " plan " + planId);

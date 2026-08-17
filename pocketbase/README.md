@@ -96,7 +96,9 @@ Created by `pb_migrations/001_initial.js`:
 
 ## Access Rules
 
-All user data collections (`budgets`, `wallets`, `transactions`, `subscriptions`) restrict list/view/create/update/delete to records where `userId = @request.auth.id`. This means each user can only ever read or write their own data.
+- `budgets`, `wallets`, `transactions`: list/view/update/delete restricted to records where `userId = @request.auth.id`, so each user can only ever read or write their own data.
+- `subscriptions`: lock/view owner-only; create/update/delete are **locked** (superuser-only) because subscription rows are written exclusively by the Paystack webhook — prevents free users from granting themselves Pro.
+- `config`: public read (`listRule`/`viewRule` = `""`); writes are **locked** to superusers.
 
 ## Seeding Default Config
 
@@ -118,7 +120,11 @@ curl -X POST http://127.0.0.1:8090/api/collections/config/records \
 
 ## Paystack Webhook
 
-PocketBase processes Paystack webhook events (e.g. `subscription.create`, `charge.success`) via the JS hook in `pocketbase/pb_hooks/paystack.js`.
+PocketBase processes Paystack webhook events (e.g. `subscription.create`, `charge.success`) via the JS hook in `pocketbase/pb_hooks/paystack.pb.js`.
+
+> **Note:** PocketBase only auto-loads hook files with a `*.pb.js` suffix. Keep the
+> file named `paystack.pb.js` — a plain `paystack.js` would be treated as a
+> `require()`-able module and silently ignored (no route registered).
 
 - **On Coolify**: the hook is baked into the image by the Dockerfile, so no extra step — just deploy.
 - **Bare VPS**: copy the file alongside the binary so it loads at startup.
@@ -128,8 +134,8 @@ PocketBase processes Paystack webhook events (e.g. `subscription.create`, `charg
 pocketbase
 ├── pocketbase            # the binary
 ├── pb_data/              # SQLite data (auto-created)
-├── pb_hooks/             # JS hooks
-│   └── paystack.js
+├── pb_hooks/             # JS hooks (*.pb.js are auto-loaded)
+│   └── paystack.pb.js
 └── pb_migrations/        # migrations (auto-applied on serve)
 ```
 

@@ -28,7 +28,7 @@ migrate((app) => {
       "CREATE INDEX idx_budgets_updated ON budgets (updatedAtMillis)",
     ],
   });
-  $app.save(budgets);
+  app.save(budgets);
 
   // ------------------------------------------------------------------
   // wallets
@@ -57,7 +57,7 @@ migrate((app) => {
       "CREATE INDEX idx_wallets_updated ON wallets (updatedAtMillis)",
     ],
   });
-  $app.save(wallets);
+  app.save(wallets);
 
   // ------------------------------------------------------------------
   // transactions
@@ -89,7 +89,7 @@ migrate((app) => {
       "CREATE INDEX idx_transactions_updated ON transactions (updatedAtMillis)",
     ],
   });
-  $app.save(transactions);
+  app.save(transactions);
 
   // ------------------------------------------------------------------
   // subscriptions
@@ -118,7 +118,7 @@ migrate((app) => {
       "CREATE INDEX idx_subscriptions_status ON subscriptions (status)",
     ],
   });
-  $app.save(subscriptions);
+  app.save(subscriptions);
 
   // ------------------------------------------------------------------
   // config (server-configurable feature limits)
@@ -139,12 +139,12 @@ migrate((app) => {
       "CREATE UNIQUE INDEX idx_config_key ON config (key)",
     ],
   });
-  $app.save(config);
+  app.save(config);
 }, (app) => {
   ["budgets", "wallets", "transactions", "subscriptions", "config"].forEach((name) => {
     try {
-      let collection = $app.findCollectionByNameOrId(name);
-      $app.delete(collection);
+      let collection = app.findCollectionByNameOrId(name);
+      app.delete(collection);
     } catch {
       // collection already deleted
     }
