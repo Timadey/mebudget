@@ -77,4 +77,76 @@ class SignInViewModelTest {
         assertEquals("Invalid credentials", viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.isLoading)
     }
+
+    @Test
+    fun `blank sign up fields show validation error`() = runTest(dispatcher) {
+        val viewModel = SignInViewModel(authManager)
+
+        viewModel.signUp()
+
+        assertEquals("All fields are required.", viewModel.uiState.value.error)
+        assertFalse(viewModel.uiState.value.isSignedIn)
+    }
+
+    @Test
+    fun `short sign up password shows validation error`() = runTest(dispatcher) {
+        val viewModel = SignInViewModel(authManager)
+        viewModel.onNameChanged("Ada")
+        viewModel.onEmailChanged("a@b.com")
+        viewModel.onPasswordChanged("short")
+        viewModel.onConfirmPasswordChanged("short")
+
+        viewModel.signUp()
+
+        assertEquals("Password must be at least 8 characters.", viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun `mismatched sign up passwords show validation error`() = runTest(dispatcher) {
+        val viewModel = SignInViewModel(authManager)
+        viewModel.onNameChanged("Ada")
+        viewModel.onEmailChanged("a@b.com")
+        viewModel.onPasswordChanged("password1")
+        viewModel.onConfirmPasswordChanged("password2")
+
+        viewModel.signUp()
+
+        assertEquals("Passwords do not match.", viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun `successful sign up signs in`() = runTest(dispatcher) {
+        coEvery { authManager.signUpWithEmail("a@b.com", "Ada", "password1") } returns Result.success(
+            AuthState.SignedIn("u1", "a@b.com", "Ada")
+        )
+        val viewModel = SignInViewModel(authManager)
+        viewModel.onNameChanged("Ada")
+        viewModel.onEmailChanged("a@b.com")
+        viewModel.onPasswordChanged("password1")
+        viewModel.onConfirmPasswordChanged("password1")
+
+        viewModel.signUp()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isSignedIn)
+        assertEquals(null, viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun `failed sign up surfaces error`() = runTest(dispatcher) {
+        coEvery { authManager.signUpWithEmail(any(), any(), any()) } returns Result.failure(
+            RuntimeException("email already exists")
+        )
+        val viewModel = SignInViewModel(authManager)
+        viewModel.onNameChanged("Ada")
+        viewModel.onEmailChanged("a@b.com")
+        viewModel.onPasswordChanged("password1")
+        viewModel.onConfirmPasswordChanged("password1")
+
+        viewModel.signUp()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isSignedIn)
+        assertEquals("email already exists", viewModel.uiState.value.error)
+    }
 }
