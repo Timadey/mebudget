@@ -1,4 +1,12 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.io.FileInputStream
+import java.util.Properties
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
 
 plugins {
     id("com.android.application")
@@ -24,6 +32,17 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -31,6 +50,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -79,7 +101,26 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
 
+    // PocketBase HTTP Client
+    implementation("com.squareup.retrofit2:retrofit:2.12.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.12.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // Google Sign-In via Credential Manager
+    implementation("androidx.credentials:credentials:1.6.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
+    // WorkManager for background sync
+    implementation("androidx.work:work-runtime-ktx:2.11.2")
+
+    // DataStore for local preferences
+    implementation("androidx.datastore:datastore-preferences:1.2.1")
+
     testImplementation("junit:junit:4.13.2")
+    testImplementation("io.mockk:mockk:1.13.13")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
