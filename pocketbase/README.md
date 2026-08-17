@@ -63,6 +63,22 @@ Note: migrations auto-apply at startup, and because hooks/migrations live in the
 image, a fresh `Deploy` picks up any changes you push to `pb_hooks/` or
 `pb_migrations/`. Your data is untouched (it lives in the mounted volume).
 
+### Coolify: your production values
+
+For **MeBudget production** use these concrete values instead of placeholders:
+
+| Item | Value |
+|------|-------|
+| Domain | `https://mebudget-api.blackshade.site` |
+| Port exposed | `8090` |
+| Storage mount | `/pb/pb_data` |
+| Webhook URL | `https://mebudget-api.blackshade.site/api/paystack/webhook` |
+| Admin UI | `https://mebudget-api.blackshade.site/_/` |
+| `POCKETBASE_PAYSTACK_SECRET_KEY` | your live secret (`sk_live_...`) |
+
+These match what the Android app is built against (see `gradle.properties` /
+`BuildConfig.POCKETBASE_URL`).
+
 ### Alternative: bare VPS / other PaaS
 
 Recommended: Railway, Fly.io, or a small VPS. PocketBase is a single binary.
