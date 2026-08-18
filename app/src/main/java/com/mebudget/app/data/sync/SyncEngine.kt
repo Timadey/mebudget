@@ -133,16 +133,18 @@ class SyncEngine(
     // ------------------------------------------------------------------
 
     private suspend fun pushLocalChanges() {
-        pushBudgets()
-        pushWallets()
-        pushTransactions()
+        val auth = authManager.authState.first()
+        val userId = (auth as? com.mebudget.app.data.auth.AuthState.SignedIn)?.userId ?: return
+        pushBudgets(userId)
+        pushWallets(userId)
+        pushTransactions(userId)
         cleanupDeletedLocally()
     }
 
-    private suspend fun pushBudgets() {
+    private suspend fun pushBudgets(userId: String) {
         for (budget in budgetDao.getAllBudgets()) {
             val meta = metadataDao.getByLocalId(SyncEntityType.BUDGET, budget.id)
-            val body = budgetToBody(budget)
+            val body = budgetToBody(budget, userId)
             val remoteId = if (meta?.remoteId != null) {
                 pocketBaseClient.api.update("budgets", meta.remoteId, body).get("id").asString
             } else {
@@ -152,12 +154,12 @@ class SyncEngine(
         }
     }
 
-    private suspend fun pushWallets() {
+    private suspend fun pushWallets(userId: String) {
         val budgetRemoteByLocal = remoteBudgetMap()
         for (wallet in walletDao.getAllWallets()) {
             val remoteBudgetId = budgetRemoteByLocal[wallet.budgetId] ?: continue
             val meta = metadataDao.getByLocalId(SyncEntityType.WALLET, wallet.id)
-            val body = walletToBody(wallet, remoteBudgetId)
+            val body = walletToBody(wallet, remoteBudgetId, userId)
             val remoteId = if (meta?.remoteId != null) {
                 pocketBaseClient.api.update("wallets", meta.remoteId, body).get("id").asString
             } else {
@@ -167,13 +169,13 @@ class SyncEngine(
         }
     }
 
-    private suspend fun pushTransactions() {
+    private suspend fun pushTransactions(userId: String) {
         val budgetRemoteByLocal = remoteBudgetMap()
         val walletRemoteByLocal = remoteWalletMap()
         for (transaction in transactionDao.getAllTransactions()) {
             val remoteBudgetId = budgetRemoteByLocal[transaction.budgetId] ?: continue
             val meta = metadataDao.getByLocalId(SyncEntityType.TRANSACTION, transaction.id)
-            val body = transactionToBody(transaction, remoteBudgetId, walletRemoteByLocal)
+            val body = transactionToBody(transaction, remoteBudgetId, walletRemoteByLocal, userId)
             val remoteId = if (meta?.remoteId != null) {
                 pocketBaseClient.api.update("transactions", meta.remoteId, body).get("id").asString
             } else {
@@ -384,7 +386,8 @@ class SyncEngine(
         return map
     }
 
-    private fun budgetToBody(budget: BudgetEntity): JsonObject = JsonObject().apply {
+    private fun budgetToBody(budget: BudgetEntity, userId: String): JsonObject = JsonObject().apply {
+        addProperty("userId", userId)
         addProperty("name", budget.name)
         budget.startDateEpochDay?.let { addProperty("startDateEpochDay", it) }
         budget.endDateEpochDay?.let { addProperty("endDateEpochDay", it) }
@@ -394,7 +397,8 @@ class SyncEngine(
         addProperty("deleted", false)
     }
 
-    private fun walletToBody(wallet: WalletEntity, remoteBudgetId: String): JsonObject = JsonObject().apply {
+    private fun walletToBody(wallet: WalletEntity, remoteBudgetId: String, userId: String): JsonObject = JsonObject().apply {
+        addProperty("userId", userId)
         addProperty("budgetId", remoteBudgetId)
         addProperty("name", wallet.name)
         addProperty("plannedAmount", wallet.plannedAmount)
@@ -407,8 +411,10 @@ class SyncEngine(
     private fun transactionToBody(
         transaction: TransactionEntity,
         remoteBudgetId: String,
-        walletRemoteByLocal: Map<Long, String>
+        walletRemoteByLocal: Map<Long, String>,
+        userId: String
     ): JsonObject = JsonObject().apply {
+        addProperty("userId", userId)
         addProperty("budgetId", remoteBudgetId)
         addProperty("type", transaction.type.name)
         addProperty("amount", transaction.amount)
