@@ -34,12 +34,19 @@ routerAdd("POST", "/api/subscriptions/checkout", (e) => {
   }
   const planId = body.plan || "";
 
-  const plansRecord = e.app.findFirstRecordByFilter(
-    "config",
-    "key = {:key}",
-    { key: "plans" }
-  );
-  const plans = (plansRecord && plansRecord.get("value")) || {};
+  let plans = {};
+  let plansRecord = null;
+  try {
+    plansRecord = e.app.findFirstRecordByFilter(
+      "config",
+      "key = {:key}",
+      { key: "plans" }
+    );
+  } catch (_) {
+    // No "plans" config record seeded yet; unknown plan is reported below.
+    plansRecord = null;
+  }
+  plans = (plansRecord && plansRecord.get("value")) || {};
   const plan = plans[planId] || null;
   if (!plan || !plan.priceKobo) {
     throw new BadRequestError("Unknown plan: " + planId);

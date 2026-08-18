@@ -9,6 +9,9 @@ import com.mebudget.app.data.SyncEntityType
 import com.mebudget.app.data.SyncMetadataDao
 import com.mebudget.app.data.SyncMetadataEntity
 import com.mebudget.app.data.TransactionDao
+import com.mebudget.app.data.TransactionEntity
+import com.mebudget.app.data.TransactionType
+import com.mebudget.app.data.WalletEntity
 import com.mebudget.app.data.WalletDao
 import com.mebudget.app.data.auth.AuthManager
 import com.mebudget.app.data.auth.AuthState
@@ -89,6 +92,72 @@ class SyncEngineTest {
         assertTrue(syncEngine.syncState.value is SyncState.Idle)
         coVerify { api.create("budgets", any()) }
         coVerify { metadataDao.insert(any()) }
+    }
+
+    @Test
+    fun `syncNow includes the signed in user id when creating a budget`() = runTest {
+        coEvery { budgetDao.getAllBudgets() } returns listOf(
+            BudgetEntity(id = 1, name = "Groceries", createdAtMillis = 100L)
+        )
+        coEvery { metadataDao.getByLocalId(SyncEntityType.BUDGET, 1) } returns null
+        coEvery { api.create("budgets", any()) } returns JsonObject().apply { addProperty("id", "rec_1") }
+
+        syncEngine.syncNow()
+
+        coVerify {
+            api.create("budgets", match { body -> body.get("userId").asString == "user1" })
+        }
+    }
+
+    @Test
+    fun `syncNow includes the signed in user id when creating a wallet`() = runTest {
+        coEvery { budgetDao.getAllBudgets() } returns listOf(
+            BudgetEntity(id = 1, name = "Groceries", createdAtMillis = 100L)
+        )
+        coEvery { metadataDao.getByLocalId(SyncEntityType.BUDGET, 1) } returns
+            SyncMetadataEntity(id = 9, entityType = SyncEntityType.BUDGET, localId = 1, remoteId = "rec_b")
+        coEvery { walletDao.getAllWallets() } returns listOf(
+            WalletEntity(id = 2, budgetId = 1, name = "Cash", plannedAmount = 50_000, sortOrder = 0)
+        )
+        coEvery { metadataDao.getByLocalId(SyncEntityType.WALLET, 2) } returns null
+        coEvery { api.create("wallets", any()) } returns JsonObject().apply { addProperty("id", "rec_w") }
+
+        syncEngine.syncNow()
+
+        coVerify {
+            api.create("wallets", match { body -> body.get("userId").asString == "user1" })
+        }
+    }
+
+    @Test
+    fun `syncNow includes the signed in user id when creating a transaction`() = runTest {
+        coEvery { budgetDao.getAllBudgets() } returns listOf(
+            BudgetEntity(id = 1, name = "Groceries", createdAtMillis = 100L)
+        )
+        coEvery { metadataDao.getByLocalId(SyncEntityType.BUDGET, 1) } returns
+            SyncMetadataEntity(id = 9, entityType = SyncEntityType.BUDGET, localId = 1, remoteId = "rec_b")
+        coEvery { walletDao.getAllWallets() } returns listOf(
+            WalletEntity(id = 2, budgetId = 1, name = "Cash", plannedAmount = 50_000, sortOrder = 0)
+        )
+        coEvery { metadataDao.getByLocalId(SyncEntityType.WALLET, 2) } returns
+            SyncMetadataEntity(id = 10, entityType = SyncEntityType.WALLET, localId = 2, remoteId = "rec_w")
+        coEvery { transactionDao.getAllTransactions() } returns listOf(
+            TransactionEntity(
+                id = 3,
+                budgetId = 1,
+                type = TransactionType.EXPENSE,
+                amount = 2_000,
+                dateEpochDay = 1
+            )
+        )
+        coEvery { metadataDao.getByLocalId(SyncEntityType.TRANSACTION, 3) } returns null
+        coEvery { api.create("transactions", any()) } returns JsonObject().apply { addProperty("id", "rec_t") }
+
+        syncEngine.syncNow()
+
+        coVerify {
+            api.create("transactions", match { body -> body.get("userId").asString == "user1" })
+        }
     }
 
     @Test
