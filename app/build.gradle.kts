@@ -9,11 +9,9 @@ if (keystorePropertiesFile.exists()) {
 }
 
 // Server / billing config, overridable via `-Pname=value` or gradle.properties.
-// Release builds MUST set a real HTTPS endpoint and a live Paystack key.
+// Release builds MUST set a real HTTPS endpoint.
 val pocketbaseUrlDebug = (project.findProperty("POCKETBASE_URL_DEBUG") as? String) ?: "http://10.0.2.2:8090"
 val pocketbaseUrlRelease = (project.findProperty("POCKETBASE_URL_RELEASE") as? String) ?: "https://pb.yourdomain.com"
-val paystackPublicKeyDebug = (project.findProperty("PAYSTACK_PUBLIC_KEY_DEBUG") as? String) ?: "pk_test_placeholder"
-val paystackPublicKeyRelease = (project.findProperty("PAYSTACK_PUBLIC_KEY_RELEASE") as? String) ?: "pk_live_placeholder"
 
 plugins {
     id("com.android.application")
@@ -54,7 +52,6 @@ android {
         debug {
             // Debug builds talk to the emulator's host loopback; HTTP is fine.
             buildConfigField("String", "POCKETBASE_URL", "\"$pocketbaseUrlDebug\"")
-            buildConfigField("String", "PAYSTACK_PUBLIC_KEY", "\"$paystackPublicKeyDebug\"")
         }
         release {
             isMinifyEnabled = true
@@ -62,9 +59,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Release builds must use HTTPS and a live Paystack key.
+            // Release builds must use HTTPS.
             buildConfigField("String", "POCKETBASE_URL", "\"$pocketbaseUrlRelease\"")
-            buildConfigField("String", "PAYSTACK_PUBLIC_KEY", "\"$paystackPublicKeyRelease\"")
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -137,9 +133,6 @@ dependencies {
 
     // DataStore for local preferences
     implementation("androidx.datastore:datastore-preferences:1.2.1")
-
-    // Paystack SDK for subscription billing
-    implementation("co.paystack.android:paystack:3.1.3")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.mockk:mockk:1.13.13")

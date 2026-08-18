@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,6 +46,7 @@ import androidx.navigation.navArgument
 import com.mebudget.app.data.BudgetEntity
 import com.mebudget.app.billing.FeatureGate
 import com.mebudget.app.data.sync.LimitsConfigManager
+import com.mebudget.app.data.sync.PricingConfigManager
 import com.mebudget.app.ui.auth.SignInScreen
 import com.mebudget.app.ui.auth.SignInViewModel
 import com.mebudget.app.ui.auth.SignInViewModelFactory
@@ -57,7 +59,6 @@ import com.mebudget.app.data.sync.syncDependencies
 import com.mebudget.app.ui.subscription.SubscriptionScreen
 import com.mebudget.app.ui.subscription.SubscriptionViewModel
 import com.mebudget.app.ui.subscription.SubscriptionViewModelFactory
-import com.mebudget.app.ui.subscription.paystackManager
 import com.mebudget.app.ui.sync.MergeDialog
 import com.mebudget.app.ui.sync.MergeViewModel
 import com.mebudget.app.ui.sync.MergeViewModelFactory
@@ -106,7 +107,8 @@ fun MeBudgetNavHost(
     val currentRoute = navBackStackEntry?.destination?.route
     val topLevelRoutes = setOf(
         MeBudgetRoute.budgets,
-        MeBudgetRoute.globalInsights
+        MeBudgetRoute.globalInsights,
+        MeBudgetRoute.profile
     )
 
     val syncDeps = remember { context.applicationContext.syncDependencies() }
@@ -234,6 +236,39 @@ fun MeBudgetNavHost(
                             )
                         }
                     )
+                    NavigationBarItem(
+                        selected = currentRoute == MeBudgetRoute.profile,
+                        onClick = {
+                            navController.navigate(MeBudgetRoute.profile) {
+                                popUpTo(MeBudgetRoute.budgets) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = "Profile",
+                                modifier = Modifier.size(28.dp),
+                                tint = if (currentRoute == MeBudgetRoute.profile) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = "Profile",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (currentRoute == MeBudgetRoute.profile) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
+                    )
                 }
             }
         }
@@ -279,9 +314,20 @@ fun MeBudgetNavHost(
                         onSyncRetry = {
                             scope.launch { syncDeps.syncEngine.syncNow() }
                         },
+                        onSyncPausedClick = {
+                            navController.navigate(MeBudgetRoute.profile) {
+                                popUpTo(MeBudgetRoute.budgets) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
                         canCreateBudget = gate.canCreateBudget(budgetsUiState.budgets.size),
                         onUpgradeClick = {
-                            navController.navigate(MeBudgetRoute.subscription)
+                            if (syncDeps.authManager.authState.value.isSignedIn) {
+                                navController.navigate(MeBudgetRoute.subscription)
+                            } else {
+                                navController.navigate(MeBudgetRoute.profile)
+                            }
                         }
                     )
                 }
@@ -343,15 +389,20 @@ fun MeBudgetNavHost(
                     )
                     SignUpScreen(
                         viewModel = signUpViewModel,
-                        onSignUpSuccess = { navController.popBackStack() },
+                        onSignUpSuccess = {
+                            navController.popBackStack(MeBudgetRoute.profile, inclusive = false)
+                        },
                         onBack = { navController.popBackStack() }
                     )
                 }
 
                 composable(MeBudgetRoute.subscription) {
+                    val syncDeps = context.applicationContext.syncDependencies()
+                    val pricingConfigManager = remember { PricingConfigManager(syncDeps.client) }
                     val subscriptionViewModel: SubscriptionViewModel = viewModel(
                         factory = SubscriptionViewModelFactory(
-                            context.applicationContext.paystackManager()
+                            pricingConfigManager = pricingConfigManager,
+                            pocketBaseClient = syncDeps.client
                         )
                     )
                     val scope = rememberCoroutineScope()

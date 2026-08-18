@@ -78,6 +78,36 @@ class AuthManagerTest {
     }
 
     @Test
+    fun `sign up creates user then signs in`() = runTest {
+        coEvery { api.create("users", any()) } returns com.google.gson.JsonObject()
+        coEvery { api.authWithPassword(any()) } returns PocketBaseAuthResponse(
+            token = "token123",
+            record = PocketBaseUserRecord("user1", "a@b.com", "Ada")
+        )
+
+        val result = authManager.signUpWithEmail("a@b.com", "Ada", "password1")
+
+        assertTrue(result.isSuccess)
+        val state = authManager.authState.value as AuthState.SignedIn
+        assertEquals("user1", state.userId)
+        assertEquals("a@b.com", state.email)
+        assertEquals("Ada", state.name)
+        assertEquals("token123", client.authToken)
+        coVerify { api.create(collection = "users", body = any()) }
+        coVerify { userPreferences.saveAuthData("token123", "user1", "a@b.com", "Ada") }
+    }
+
+    @Test
+    fun `sign up propagates create failure`() = runTest {
+        coEvery { api.create("users", any()) } throws RuntimeException("email already exists")
+
+        val result = authManager.signUpWithEmail("a@b.com", "Ada", "password1")
+
+        assertTrue(result.isFailure)
+        assertTrue(authManager.authState.value is AuthState.NotSignedIn)
+    }
+
+    @Test
     fun `sign out clears state token and preferences`() = runTest {
         coEvery { api.authWithPassword(any()) } returns PocketBaseAuthResponse(
             token = "token123",

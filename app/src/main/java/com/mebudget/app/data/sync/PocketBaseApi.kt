@@ -1,6 +1,7 @@
 package com.mebudget.app.data.sync
 
 import com.google.gson.JsonObject
+import com.mebudget.app.data.sync.models.CheckoutResponse
 import com.mebudget.app.data.sync.models.PocketBaseAuthResponse
 import com.mebudget.app.data.sync.models.PocketBaseListResponse
 import retrofit2.http.Body
@@ -23,6 +24,11 @@ interface PocketBaseApi {
     suspend fun authWithPassword(
         @Body body: AuthWithPasswordRequest
     ): PocketBaseAuthResponse
+
+    @POST("api/subscriptions/checkout")
+    suspend fun createCheckout(
+        @Body body: JsonObject
+    ): CheckoutResponse
 
     @POST("api/collections/users/refresh")
     suspend fun refreshAuth(): PocketBaseAuthResponse

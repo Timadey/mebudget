@@ -45,6 +45,27 @@ class AuthManager(
         }
     }
 
+    /**
+     * Creates a users record then signs the new account in, persisting the
+     * session exactly like [signInWithEmail]. Password confirmation is handled
+     * by the caller (SignUpScreen/ViewModel); the server requires
+     * `passwordConfirm` to equal `password`.
+     */
+    suspend fun signUpWithEmail(email: String, name: String, password: String): Result<AuthState> {
+        return try {
+            val body = com.google.gson.JsonObject().apply {
+                addProperty("email", email)
+                addProperty("name", name)
+                addProperty("password", password)
+                addProperty("passwordConfirm", password)
+            }
+            pocketBaseClient.api.create("users", body)
+            signInWithEmail(email, password)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun signOut() {
         pocketBaseClient.clearAuth()
         userPreferences.clearAuthData()

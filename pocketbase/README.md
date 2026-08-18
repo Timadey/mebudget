@@ -125,6 +125,13 @@ curl -X POST http://127.0.0.1:8090/api/collections/config/records \
   -H "Authorization: Bearer <superuser-token>" \
   -H "Content-Type: application/json" \
   -d @pocketbase/seed/default_config.json
+
+# Subscription prices (kobo). Change the priceKobo values here and redeploy
+# to update in-app pricing without shipping a new APK.
+curl -X POST http://127.0.0.1:8090/api/collections/config/records \
+  -H "Authorization: Bearer <superuser-token>" \
+  -H "Content-Type: application/json" \
+  -d @pocketbase/seed/default_plans.json
 ```
 
 ## Google OAuth2 (Sign in with Google)
@@ -135,6 +142,14 @@ curl -X POST http://127.0.0.1:8090/api/collections/config/records \
 4. For Android, the Credential Manager flow returns a Google ID token, which PocketBase exchanges server-side for a user session.
 
 ## Paystack Webhook
+
+Subscriptions are purchased via a hosted Paystack payment page. The client asks
+`POST /api/subscriptions/checkout` (auth required, plan in body) and shows the
+returned `authorization_url` in an in-app WebView. Prices come from the
+`config` "plans" record (see `pocketbase/seed/default_plans.json`); the
+checkout hook resolves the price server-side and records `metadata.plan` on the
+transaction, which the webhook prefers when granting Pro. The Paystack secret
+key never leaves the server.
 
 PocketBase processes Paystack webhook events (e.g. `subscription.create`, `charge.success`) via the JS hook in `pocketbase/pb_hooks/paystack.pb.js`.
 

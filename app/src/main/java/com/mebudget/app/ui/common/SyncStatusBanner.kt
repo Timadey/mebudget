@@ -1,6 +1,7 @@
 package com.mebudget.app.ui.common
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,7 +27,8 @@ import com.mebudget.app.data.sync.SyncState
 @Composable
 fun SyncStatusBanner(
     syncState: SyncState,
-    onRetryClick: () -> Unit = {}
+    onRetryClick: () -> Unit = {},
+    onPausedClick: () -> Unit = {}
 ) {
     when (syncState) {
         is SyncState.Idle -> Unit
@@ -90,14 +92,24 @@ fun SyncStatusBanner(
         }
 
         is SyncState.Paused -> {
-            SyncBannerCard(container = MaterialTheme.colorScheme.errorContainer) {
-                Text(
-                    text = "SYNC PAUSED: ${syncState.reason.uppercase()}",
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
+            SyncBannerCard(
+                container = MaterialTheme.colorScheme.errorContainer,
+                modifier = Modifier.clickable(onClick = onPausedClick),
+                content = {
+                    Text(
+                        text = "SYNC PAUSED: ${syncState.reason.uppercase()}",
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Text(
+                        text = "Tap to sign in",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            )
         }
     }
 }
@@ -105,10 +117,11 @@ fun SyncStatusBanner(
 @Composable
 private fun SyncBannerCard(
     container: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp),
         shape = RoundedCornerShape(0.dp),
