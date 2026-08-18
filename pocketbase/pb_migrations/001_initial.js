@@ -46,7 +46,7 @@ migrate((app) => {
       { name: "budgetId", type: "relation", required: true, maxSelect: 1, collectionId: budgets.id, cascadeDelete: true },
       { name: "name", type: "text", required: true, max: 200 },
       { name: "plannedAmount", type: "number", required: true },
-      { name: "sortOrder", type: "number", required: true },
+      { name: "sortOrder", type: "number", required: false },
       { name: "archived", type: "bool", required: false },
       { name: "updatedAtMillis", type: "number", required: true },
       { name: "deleted", type: "bool", required: false },
