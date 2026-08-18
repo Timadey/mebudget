@@ -7,6 +7,10 @@
 // Requires the env var POCKETBASE_PAYSTACK_SECRET_KEY (server-side only).
 // Prices are read from the `config` collection record key = "plans"
 // (see pocketbase/seed/default_plans.json).
+//
+// IMPORTANT: PocketBase's JSVM runs each route handler in an isolated scope, so
+// module-level `const`/`var`/functions are NOT visible inside the callback.
+// Everything the handler needs must be defined inline.
 
 console.log("checkout.pb.js hook: registering /api/subscriptions/checkout");
 
@@ -46,7 +50,22 @@ routerAdd("POST", "/api/subscriptions/checkout", (e) => {
     // No "plans" config record seeded yet; unknown plan is reported below.
     plansRecord = null;
   }
-  plans = (plansRecord && plansRecord.get("value")) || {};
+  if (plansRecord) {
+    // PocketBase exposes json-type field values from `record.get()` as a raw
+    // []byte array (numbers), so decode them back into a JS object.
+    const raw = plansRecord.get("value");
+    if (raw !== null && raw !== undefined) {
+      if (Array.isArray(raw)) {
+        let text = "";
+        for (const byte of raw) text += String.fromCharCode(byte);
+        plans = JSON.parse(text || "null") || {};
+      } else if (typeof raw === "string") {
+        plans = JSON.parse(raw) || {};
+      } else {
+        plans = raw || {};
+      }
+    }
+  }
   const plan = plans[planId] || null;
   if (!plan || !plan.priceKobo) {
     throw new BadRequestError("Unknown plan: " + planId);
@@ -78,13 +97,13 @@ routerAdd("POST", "/api/subscriptions/checkout", (e) => {
     });
   } catch (err) {
     $app.logger().error("checkout: paystack request failed: " + String(err));
-    throw new BadGatewayError("Failed to reach payment provider");
+    throw new ApiError(502, "Failed to reach payment provider");
   }
 
   const parsed = (res && typeof res.json === "object") ? res.json : null;
   if (!res || res.statusCode >= 400 || !parsed || !parsed.status) {
     $app.logger().error("checkout: paystack returned status " + (res && res.statusCode) + " body " + (res && res.body));
-    throw new BadGatewayError("Failed to create checkout");
+    throw new ApiError(502, "Failed to create checkout");
   }
   const data = parsed.data || {};
 
