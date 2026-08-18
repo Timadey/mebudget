@@ -1,6 +1,7 @@
 package com.mebudget.app.ui.subscription
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -44,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.mebudget.app.BuildConfig
 import com.mebudget.app.billing.BillingPlan
 import com.mebudget.app.ui.theme.AccentBlue
 
@@ -60,8 +60,6 @@ fun SubscriptionScreen(
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) onSubscribeSuccess()
     }
-
-    val callbackBase = BuildConfig.POCKETBASE_URL.trimEnd('/')
 
     Scaffold(
         topBar = {
@@ -79,7 +77,6 @@ fun SubscriptionScreen(
             if (uiState.checkoutUrl != null) {
                 PaystackWebView(
                     checkoutUrl = uiState.checkoutUrl!!,
-                    callbackBase = callbackBase,
                     onSuccess = viewModel::onPaymentSucceeded,
                     onCancel = viewModel::onPaymentCanceled
                 )
@@ -167,7 +164,6 @@ fun SubscriptionScreen(
 @Composable
 private fun PaystackWebView(
     checkoutUrl: String,
-    callbackBase: String,
     onSuccess: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -190,9 +186,10 @@ private fun PaystackWebView(
                     }
 
                     private fun handle(url: String): Boolean {
+                        val path = Uri.parse(url).path ?: return false
                         return when {
-                            url.startsWith("$callbackBase/checkout-success") -> { onSuccess(); true }
-                            url.startsWith("$callbackBase/checkout-cancel") -> { onCancel(); true }
+                            path.endsWith("/checkout-success") -> { onSuccess(); true }
+                            path.endsWith("/checkout-cancel") -> { onCancel(); true }
                             else -> false
                         }
                     }
