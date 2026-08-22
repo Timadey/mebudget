@@ -21,6 +21,10 @@ class AuthManager(
     private val _authState = MutableStateFlow<AuthState>(AuthState.NotSignedIn)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
+    /** True when auth state was restored from preferences (app restart), not a fresh sign-in. */
+    var isRestoredSession: Boolean = false
+        private set
+
     suspend fun signInWithEmail(email: String, password: String): Result<AuthState> {
         return try {
             val response = pocketBaseClient.api.authWithPassword(
@@ -38,6 +42,7 @@ class AuthManager(
                 email = response.record.email,
                 name = response.record.name
             )
+            isRestoredSession = false
             _authState.value = state
             Result.success(state)
         } catch (e: Exception) {
@@ -80,6 +85,7 @@ class AuthManager(
         val name = userPreferences.userName.first()
         if (token != null && userId != null) {
             pocketBaseClient.authToken = token
+            isRestoredSession = true
             _authState.value = AuthState.SignedIn(
                 userId = userId,
                 email = email.orEmpty(),

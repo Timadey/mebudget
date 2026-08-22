@@ -87,21 +87,10 @@ class SyncEngine(
      * Returns true when there is a genuine bidirectional conflict: unpushed local
      * records AND unpulled cloud records that this device has never seen.
      * Returns false when data is already in sync (safe to just call syncNow).
+     * Returns false on network errors (safe fallback: syncNow handles errors).
      */
-    suspend fun hasActualConflict(): Boolean {
+    suspend fun hasActualConflict(): Boolean = runCatching {
         val unpushed = pendingCount()
-        if (unpushed == 0) {
-            // No local changes to push — check if cloud has records we don't know about
-            val cloudBudgets = fetchAll("budgets")
-            val cloudWallets = fetchAll("wallets")
-            val cloudTransactions = fetchAll("transactions")
-            val knownRemoteIds = metadataDao.getAll().mapNotNull { it.remoteId }.toSet()
-            val unpulled = cloudBudgets.any { it.remoteId !in knownRemoteIds } ||
-                cloudWallets.any { it.remoteId !in knownRemoteIds } ||
-                cloudTransactions.any { it.remoteId !in knownRemoteIds }
-            return unpulled
-        }
-        // There are unpushed local records — also check if cloud has new records
         val knownRemoteIds = metadataDao.getAll().mapNotNull { it.remoteId }.toSet()
         val cloudBudgets = fetchAll("budgets")
         val cloudWallets = fetchAll("wallets")
@@ -109,8 +98,8 @@ class SyncEngine(
         val unpulled = cloudBudgets.any { it.remoteId !in knownRemoteIds } ||
             cloudWallets.any { it.remoteId !in knownRemoteIds } ||
             cloudTransactions.any { it.remoteId !in knownRemoteIds }
-        return unpulled
-    }
+        if (unpushed == 0) unpulled else unpulled
+    }.getOrDefault(false)
 
     /** Push this device's data to the cloud, leaving nothing else to merge. */
     suspend fun uploadLocalData(): Result<Unit> = runMerge {

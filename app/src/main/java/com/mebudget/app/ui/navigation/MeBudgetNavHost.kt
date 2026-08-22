@@ -133,11 +133,13 @@ fun MeBudgetNavHost(
             syncDeps.subscriptionManager.refresh()
             syncDeps.syncEngine.startRealtimeUpdates()
 
-            // Auto-sync on sign-in: check for actual conflicts
-            if (syncDeps.syncEngine.hasActualConflict()) {
-                navController.navigate(MeBudgetRoute.syncMerge)
-            } else {
-                syncScope.launch { syncDeps.syncEngine.syncNow() }
+            // Only run conflict check + sync on fresh sign-in, not app restart
+            if (!syncDeps.authManager.isRestoredSession) {
+                if (syncDeps.syncEngine.hasActualConflict()) {
+                    navController.navigate(MeBudgetRoute.syncMerge)
+                } else {
+                    syncScope.launch { syncDeps.syncEngine.syncNow() }
+                }
             }
 
             while (true) {
