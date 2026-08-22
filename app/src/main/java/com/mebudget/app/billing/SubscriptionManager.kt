@@ -107,7 +107,7 @@ class SubscriptionManager(
         return try {
             val response = pocketBaseClient.api.post(
                 endpoint = "subscriptions/cancel",
-                body = null
+                body = JsonObject()
             )
             val endDate = response.get("endDate")?.takeIf { !it.isJsonNull }?.asString
             val message = response.get("message")?.takeIf { !it.isJsonNull }?.asString
