@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CardDefaults
@@ -101,9 +102,19 @@ fun SubscriptionScreen(
             } else if (subscriptionInfo.isPro) {
                 ProSubscriptionContent(
                     subscriptionInfo = subscriptionInfo,
-                    onCancelClick = { viewModel.cancelSubscription() },
+                    isCancelling = uiState.isLoading,
+                    onCancelClick = { viewModel.showCancelDialog() },
                     onBack = onBack
                 )
+                if (uiState.showCancelDialog) {
+                    CancelSubscriptionDialog(
+                        expiryDate = subscriptionInfo.expiryMillis?.let {
+                            SimpleDateFormat("dd MMMM yyyy", Locale.US).format(Date(it))
+                        } ?: "the end of your billing period",
+                        onConfirm = { viewModel.confirmCancelSubscription() },
+                        onDismiss = { viewModel.dismissCancelDialog() }
+                    )
+                }
             } else if (uiState.checkoutUrl != null) {
                 PaystackWebView(
                     checkoutUrl = uiState.checkoutUrl!!,
@@ -305,6 +316,7 @@ private fun PlanSelectorRow(
 @Composable
 private fun ProSubscriptionContent(
     subscriptionInfo: SubscriptionInfo,
+    isCancelling: Boolean,
     onCancelClick: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -357,7 +369,7 @@ private fun ProSubscriptionContent(
         }
 
         Text(
-            text = "Your Pro features will remain active until the end of the current billing period. After that, you will not be charged again.",
+            text = "If you cancel your subscription, your Pro features will remain active until the end of the current billing period. You will not be charged again.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -369,9 +381,18 @@ private fun ProSubscriptionContent(
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.error
             ),
-            border = BorderStroke(2.dp, MaterialTheme.colorScheme.error)
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.error),
+            enabled = !isCancelling
         ) {
-            Text("CANCEL SUBSCRIPTION", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            if (isCancelling) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.error
+                )
+            } else {
+                Text("CANCEL SUBSCRIPTION", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            }
         }
 
         Text(
@@ -380,4 +401,41 @@ private fun ProSubscriptionContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+@Composable
+private fun CancelSubscriptionDialog(
+    expiryDate: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Cancel Subscription?", fontWeight = FontWeight.Black) },
+        text = {
+            Text(
+                text = "If you cancel, your Pro features will remain active until $expiryDate. You will not be charged again."
+            )
+        },
+        confirmButton = {
+            OutlinedButton(
+                onClick = onConfirm,
+                shape = RoundedCornerShape(0.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+            ) {
+                Text("CANCEL", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(0.dp)
+            ) {
+                Text("KEEP PRO", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            }
+        }
+    )
 }

@@ -10,9 +10,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +40,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import androidx.navigation.NavType
@@ -124,7 +128,7 @@ fun MeBudgetNavHost(
     LaunchedEffect(Unit) { syncDeps.authManager.restoreSession() }
     val authState by syncDeps.authManager.authState.collectAsState()
     val syncState by syncDeps.syncEngine.syncState.collectAsState()
-    val syncScope = rememberCoroutineScope()
+    val syncScope = ProcessLifecycleOwner.get().lifecycleScope
     LaunchedEffect(authState) {
         if (authState.isSignedIn) {
             syncDeps.subscriptionManager.refresh()
@@ -170,6 +174,11 @@ fun MeBudgetNavHost(
                                         Icons.Default.Warning,
                                         contentDescription = "Sync failed, tap to retry",
                                         tint = MaterialTheme.colorScheme.error
+                                    )
+                                    is SyncState.Idle -> Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = "Synced",
+                                        tint = Color(0xFF4CAF50)
                                     )
                                     else -> Icon(
                                         Icons.Default.Refresh,
@@ -314,7 +323,7 @@ fun MeBudgetNavHost(
             ) {
                 composable(MeBudgetRoute.budgets) {
                     val syncDeps = context.applicationContext.syncDependencies()
-                    val scope = rememberCoroutineScope()
+                    val scope = ProcessLifecycleOwner.get().lifecycleScope
                     val limitsConfigManager = remember { LimitsConfigManager(syncDeps.client) }
                     val limits by limitsConfigManager.limits.collectAsState()
                     val gate = remember(limits) {
