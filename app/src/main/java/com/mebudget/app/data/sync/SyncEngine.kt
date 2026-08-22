@@ -126,8 +126,8 @@ class SyncEngine(
         _syncState.value = SyncState.Syncing
 
         return try {
-            pushLocalChanges()
-            pullRemoteChanges()
+            val pushed = pushLocalChanges()
+            val pulled = pullRemoteChanges()
             val pending = pendingCount()
             _syncState.value = if (pending > 0) SyncState.Pending(pending) else SyncState.Idle
             Result.success(Unit)
@@ -141,18 +141,22 @@ class SyncEngine(
     // Push
     // ------------------------------------------------------------------
 
-    private suspend fun pushLocalChanges() {
+    private suspend fun pushLocalChanges(): Boolean {
         val auth = authManager.authState.first()
-        val userId = (auth as? com.mebudget.app.data.auth.AuthState.SignedIn)?.userId ?: return
-        pushBudgets(userId)
-        pushWallets(userId)
-        pushTransactions(userId)
+        val userId = (auth as? com.mebudget.app.data.auth.AuthState.SignedIn)?.userId ?: return false
+        val pushed = pushBudgets(userId) || pushWallets(userId) || pushTransactions(userId)
         cleanupDeletedLocally()
+        return pushed
     }
 
-    private suspend fun pushBudgets(userId: String) {
+    private suspend fun pushBudgets(userId: String): Boolean {
+        var pushed = false
         for (budget in budgetDao.getAllBudgets()) {
             val meta = metadataDao.getByLocalId(SyncEntityType.BUDGET, budget.id)
+            // Skip if already synced and not modified since last sync
+            if (meta?.remoteId != null && meta.lastSyncedAtMillis != null &&
+                budget.updatedAtMillis <= meta.lastSyncedAtMillis
+            ) continue
             val body = budgetToBody(budget, userId)
             val remoteId = if (meta?.remoteId != null) {
                 pocketBaseClient.api.update("budgets", meta.remoteId, body).get("id").asString
@@ -160,14 +164,21 @@ class SyncEngine(
                 pocketBaseClient.api.create("budgets", body).get("id").asString
             }
             saveMetadata(SyncEntityType.BUDGET, budget.id, remoteId)
+            pushed = true
         }
+        return pushed
     }
 
-    private suspend fun pushWallets(userId: String) {
+    private suspend fun pushWallets(userId: String): Boolean {
+        var pushed = false
         val budgetRemoteByLocal = remoteBudgetMap()
         for (wallet in walletDao.getAllWallets()) {
             val remoteBudgetId = budgetRemoteByLocal[wallet.budgetId] ?: continue
             val meta = metadataDao.getByLocalId(SyncEntityType.WALLET, wallet.id)
+            // Skip if already synced and not modified since last sync
+            if (meta?.remoteId != null && meta.lastSyncedAtMillis != null &&
+                wallet.updatedAtMillis <= meta.lastSyncedAtMillis
+            ) continue
             val body = walletToBody(wallet, remoteBudgetId, userId)
             val remoteId = if (meta?.remoteId != null) {
                 pocketBaseClient.api.update("wallets", meta.remoteId, body).get("id").asString
@@ -175,15 +186,22 @@ class SyncEngine(
                 pocketBaseClient.api.create("wallets", body).get("id").asString
             }
             saveMetadata(SyncEntityType.WALLET, wallet.id, remoteId)
+            pushed = true
         }
+        return pushed
     }
 
-    private suspend fun pushTransactions(userId: String) {
+    private suspend fun pushTransactions(userId: String): Boolean {
+        var pushed = false
         val budgetRemoteByLocal = remoteBudgetMap()
         val walletRemoteByLocal = remoteWalletMap()
         for (transaction in transactionDao.getAllTransactions()) {
             val remoteBudgetId = budgetRemoteByLocal[transaction.budgetId] ?: continue
             val meta = metadataDao.getByLocalId(SyncEntityType.TRANSACTION, transaction.id)
+            // Skip if already synced and not modified since last sync
+            if (meta?.remoteId != null && meta.lastSyncedAtMillis != null &&
+                transaction.updatedAtMillis <= meta.lastSyncedAtMillis
+            ) continue
             val body = transactionToBody(transaction, remoteBudgetId, walletRemoteByLocal, userId)
             val remoteId = if (meta?.remoteId != null) {
                 pocketBaseClient.api.update("transactions", meta.remoteId, body).get("id").asString
@@ -191,7 +209,9 @@ class SyncEngine(
                 pocketBaseClient.api.create("transactions", body).get("id").asString
             }
             saveMetadata(SyncEntityType.TRANSACTION, transaction.id, remoteId)
+            pushed = true
         }
+        return pushed
     }
 
     /** Remote rows whose local row no longer exists are deleted from the server. */
@@ -216,23 +236,34 @@ class SyncEngine(
     // Pull
     // ------------------------------------------------------------------
 
-    private suspend fun pullRemoteChanges() {
-        pullBudgets()
-        pullWallets()
-        pullTransactions()
+    private suspend fun pullRemoteChanges(): Boolean {
+        val budgetSyncTime = getLatestSyncTime(SyncEntityType.BUDGET)
+        val walletSyncTime = getLatestSyncTime(SyncEntityType.WALLET)
+        val transactionSyncTime = getLatestSyncTime(SyncEntityType.TRANSACTION)
+        val pulled = pullBudgets(budgetSyncTime) || pullWallets(walletSyncTime) || pullTransactions(transactionSyncTime)
+        return pulled
     }
 
-    private suspend fun pullBudgets() {
-        for (rec in fetchAll("budgets")) {
+    private suspend fun getLatestSyncTime(entityType: String): Long? {
+        val metas = metadataDao.getByEntityType(entityType)
+        return metas.mapNotNull { it.lastSyncedAtMillis }.maxOrNull()
+    }
+
+    private suspend fun pullBudgets(sinceMillis: Long? = null): Boolean {
+        var pulled = false
+        for (rec in fetchAll("budgets", sinceMillis)) {
             val meta = metadataDao.getByRemoteId(SyncEntityType.BUDGET, rec.remoteId)
             val deleted = rec.safeGetBool("deleted")
             if (deleted) {
                 val localId = meta?.localId ?: continue
                 budgetDao.getBudget(localId)?.let { budgetDao.delete(it) }
                 meta?.let { metadataDao.delete(it) }
+                pulled = true
                 continue
             }
             val remoteUpdated = rec.safeGetLong("updatedAtMillis") ?: 0L
+            // Skip if already synced and remote hasn't changed since last sync
+            if (meta?.lastSyncedAtMillis != null && remoteUpdated <= meta.lastSyncedAtMillis) continue
             val localId = if (meta != null) {
                 val existing = budgetDao.getBudget(meta.localId)
                 if (existing != null) {
@@ -252,23 +283,29 @@ class SyncEngine(
                 budgetDao.insert(bodyToBudget(rec, null))
             }
             saveMetadata(SyncEntityType.BUDGET, localId, rec.remoteId)
+            pulled = true
         }
+        return pulled
     }
 
-    private suspend fun pullWallets() {
+    private suspend fun pullWallets(sinceMillis: Long? = null): Boolean {
+        var pulled = false
         val budgetLocalByRemote = localBudgetByRemoteMap()
-        for (rec in fetchAll("wallets")) {
+        for (rec in fetchAll("wallets", sinceMillis)) {
             val meta = metadataDao.getByRemoteId(SyncEntityType.WALLET, rec.remoteId)
             val deleted = rec.safeGetBool("deleted")
             if (deleted) {
                 val localId = meta?.localId ?: continue
                 walletDao.getWallet(localId)?.let { walletDao.delete(it) }
                 meta?.let { metadataDao.delete(it) }
+                pulled = true
                 continue
             }
             val remoteBudgetId = rec.safeGetString("budgetId") ?: continue
             val localBudgetId = budgetLocalByRemote[remoteBudgetId] ?: continue
             val remoteUpdated = rec.safeGetLong("updatedAtMillis") ?: 0L
+            // Skip if already synced and remote hasn't changed since last sync
+            if (meta?.lastSyncedAtMillis != null && remoteUpdated <= meta.lastSyncedAtMillis) continue
             val localId = if (meta != null) {
                 val existing = walletDao.getWallet(meta.localId)
                 if (existing != null) {
@@ -288,24 +325,30 @@ class SyncEngine(
                 walletDao.insert(bodyToWallet(rec, null, localBudgetId))
             }
             saveMetadata(SyncEntityType.WALLET, localId, rec.remoteId)
+            pulled = true
         }
+        return pulled
     }
 
-    private suspend fun pullTransactions() {
+    private suspend fun pullTransactions(sinceMillis: Long? = null): Boolean {
+        var pulled = false
         val budgetLocalByRemote = localBudgetByRemoteMap()
         val walletLocalByRemote = localWalletByRemoteMap()
-        for (rec in fetchAll("transactions")) {
+        for (rec in fetchAll("transactions", sinceMillis)) {
             val meta = metadataDao.getByRemoteId(SyncEntityType.TRANSACTION, rec.remoteId)
             val deleted = rec.safeGetBool("deleted")
             if (deleted) {
                 val localId = meta?.localId ?: continue
                 transactionDao.getTransaction(localId)?.let { transactionDao.delete(it) }
                 meta?.let { metadataDao.delete(it) }
+                pulled = true
                 continue
             }
             val remoteBudgetId = rec.safeGetString("budgetId") ?: continue
             val localBudgetId = budgetLocalByRemote[remoteBudgetId] ?: continue
             val remoteUpdated = rec.safeGetLong("updatedAtMillis") ?: 0L
+            // Skip if already synced and remote hasn't changed since last sync
+            if (meta?.lastSyncedAtMillis != null && remoteUpdated <= meta.lastSyncedAtMillis) continue
             val localId = if (meta != null) {
                 val existing = transactionDao.getTransaction(meta.localId)
                 if (existing != null) {
@@ -325,7 +368,9 @@ class SyncEngine(
                 transactionDao.insert(bodyToTransaction(rec, null, localBudgetId, walletLocalByRemote))
             }
             saveMetadata(SyncEntityType.TRANSACTION, localId, rec.remoteId)
+            pulled = true
         }
+        return pulled
     }
 
     // ------------------------------------------------------------------
@@ -344,14 +389,16 @@ class SyncEngine(
         if (existing != null) metadataDao.update(updated) else metadataDao.insert(updated)
     }
 
-    private suspend fun fetchAll(collection: String): List<JsonObject> {
+    private suspend fun fetchAll(collection: String, sinceMillis: Long? = null): List<JsonObject> {
         val items = mutableListOf<JsonObject>()
         var page = 1
         while (true) {
+            val filter = sinceMillis?.let { "updatedAtMillis > $it" }
             val response: PocketBaseListResponse<JsonObject> = pocketBaseClient.api.getList(
                 collection = collection,
                 page = page,
                 perPage = 200,
+                filter = filter,
                 sort = "updatedAtMillis"
             )
             items += response.items
@@ -402,7 +449,7 @@ class SyncEngine(
         budget.endDateEpochDay?.let { addProperty("endDateEpochDay", it) }
         addProperty("negativeBalanceRule", budget.negativeBalanceRule.name)
         addProperty("createdAtMillis", budget.createdAtMillis)
-        addProperty("updatedAtMillis", System.currentTimeMillis())
+        addProperty("updatedAtMillis", budget.updatedAtMillis)
         addProperty("deleted", false)
     }
 
@@ -413,7 +460,7 @@ class SyncEngine(
         addProperty("plannedAmount", wallet.plannedAmount)
         addProperty("sortOrder", wallet.sortOrder)
         addProperty("archived", wallet.archived)
-        addProperty("updatedAtMillis", System.currentTimeMillis())
+        addProperty("updatedAtMillis", wallet.updatedAtMillis)
         addProperty("deleted", false)
     }
 
@@ -432,7 +479,7 @@ class SyncEngine(
         transaction.destinationWalletId?.let { walletRemoteByLocal[it]?.let { w -> addProperty("destinationWalletId", w) } }
         transaction.note?.let { addProperty("note", it) }
         addProperty("createdAtMillis", transaction.createdAtMillis)
-        addProperty("updatedAtMillis", System.currentTimeMillis())
+        addProperty("updatedAtMillis", transaction.updatedAtMillis)
         addProperty("deleted", false)
     }
 
@@ -444,7 +491,8 @@ class SyncEngine(
         negativeBalanceRule = rec.safeGetString("negativeBalanceRule")
             ?.let { runCatching { NegativeBalanceRule.valueOf(it) }.getOrNull() }
             ?: NegativeBalanceRule.WARN,
-        createdAtMillis = rec.safeGetLong("createdAtMillis") ?: System.currentTimeMillis()
+        createdAtMillis = rec.safeGetLong("createdAtMillis") ?: System.currentTimeMillis(),
+        updatedAtMillis = rec.safeGetLong("updatedAtMillis") ?: System.currentTimeMillis()
     )
 
     private fun bodyToWallet(rec: JsonObject, localId: Long?, localBudgetId: Long): WalletEntity = WalletEntity(
@@ -453,7 +501,8 @@ class SyncEngine(
         name = rec.safeGetString("name") ?: "",
         plannedAmount = rec.safeGetLong("plannedAmount") ?: 0L,
         sortOrder = rec.safeGetInt("sortOrder") ?: 0,
-        archived = rec.safeGetBool("archived")
+        archived = rec.safeGetBool("archived"),
+        updatedAtMillis = rec.safeGetLong("updatedAtMillis") ?: System.currentTimeMillis()
     )
 
     private fun bodyToTransaction(
@@ -472,7 +521,8 @@ class SyncEngine(
         sourceWalletId = rec.safeGetString("sourceWalletId")?.let { walletLocalByRemote[it] },
         destinationWalletId = rec.safeGetString("destinationWalletId")?.let { walletLocalByRemote[it] },
         note = rec.safeGetString("note"),
-        createdAtMillis = rec.safeGetLong("createdAtMillis") ?: System.currentTimeMillis()
+        createdAtMillis = rec.safeGetLong("createdAtMillis") ?: System.currentTimeMillis(),
+        updatedAtMillis = rec.safeGetLong("updatedAtMillis") ?: System.currentTimeMillis()
     )
 
     private fun JsonObject.safeGetString(key: String): String? =

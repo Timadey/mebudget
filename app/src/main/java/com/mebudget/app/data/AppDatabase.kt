@@ -28,7 +28,7 @@ class Converters {
         TransactionEntity::class,
         SyncMetadataEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -48,7 +48,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "mebudget.db"
-                ).addMigrations(MIGRATION_1_2)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build().also { INSTANCE = it }
             }
         }
@@ -70,6 +70,12 @@ abstract class AppDatabase : RoomDatabase() {
             db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_metadata_localId ON sync_metadata (localId)")
             db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_metadata_remoteId ON sync_metadata (remoteId)")
             db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_metadata_entityType ON sync_metadata (entityType)")
+        }
+
+        val MIGRATION_2_3 = androidx.room.migration.Migration(2, 3) { db ->
+            db.execSQL("ALTER TABLE budgets ADD COLUMN updatedAtMillis INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE wallets ADD COLUMN updatedAtMillis INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE transactions ADD COLUMN updatedAtMillis INTEGER NOT NULL DEFAULT 0")
         }
     }
 }

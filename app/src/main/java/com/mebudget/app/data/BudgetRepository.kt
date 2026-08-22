@@ -94,7 +94,8 @@ class BudgetRepository(
             original.copy(
                 id = 0,
                 name = validatedName,
-                createdAtMillis = System.currentTimeMillis()
+                createdAtMillis = System.currentTimeMillis(),
+                updatedAtMillis = System.currentTimeMillis()
             )
         )
         walletDao.insertAll(
@@ -102,7 +103,8 @@ class BudgetRepository(
                 wallet.copy(
                     id = 0,
                     budgetId = newBudgetId,
-                    sortOrder = index
+                    sortOrder = index,
+                    updatedAtMillis = System.currentTimeMillis()
                 )
             }
         )
@@ -241,7 +243,8 @@ class BudgetRepository(
             transactionDao.update(
                 tx.copy(
                     sourceWalletId = if (tx.sourceWalletId == walletId) null else tx.sourceWalletId,
-                    destinationWalletId = if (tx.destinationWalletId == walletId) null else tx.destinationWalletId
+                    destinationWalletId = if (tx.destinationWalletId == walletId) null else tx.destinationWalletId,
+                    updatedAtMillis = System.currentTimeMillis()
                 )
             )
         }
