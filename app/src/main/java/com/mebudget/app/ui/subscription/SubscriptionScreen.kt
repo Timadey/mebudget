@@ -245,9 +245,9 @@ private fun PaystackWebView(
 @Composable
 private fun ComparisonCard(isPro: Boolean = false) {
     val items = if (isPro) {
-        listOf("Unlimited budgets", "Premium insights", "Cloud sync", "Priority support")
+        listOf("Unlimited budgets & wallets", "Advanced analytics", "Cloud sync")
     } else {
-        listOf("2 budgets", "Basic insights", "No sync")
+        listOf("Unlimited budgets & wallets", "200 transactions/month", "No sync")
     }
     Card(
         modifier = Modifier.fillMaxWidth(),

@@ -17,38 +17,53 @@ class FeatureGateTest {
     )
 
     @Test
-    fun `free user cannot exceed budget limit`() {
+    fun `anonymous user cannot exceed budget limit`() {
         val g = gate()
         assertTrue(g.canCreateBudget(currentCount = 0))
-        assertTrue(g.canCreateBudget(currentCount = 1))
-        assertFalse(g.canCreateBudget(currentCount = 2))
-        assertFalse(g.canCreateBudget(currentCount = 10))
+        assertTrue(g.canCreateBudget(currentCount = Int.MAX_VALUE - 1))
     }
 
     @Test
-    fun `pro user can create unlimited budgets`() {
-        val g = gate(pro = true)
+    fun `signed in user can create unlimited budgets`() {
+        val g = gate(signedIn = true)
         assertTrue(g.canCreateBudget(currentCount = 100))
     }
 
     @Test
-    fun `free user wallet limit is enforced`() {
+    fun `anonymous user wallet limit is unlimited`() {
         val g = gate()
-        assertTrue(g.canCreateWallet(currentCount = 4))
-        assertFalse(g.canCreateWallet(currentCount = 5))
+        assertTrue(g.canCreateWallet(currentCount = Int.MAX_VALUE - 1))
     }
 
     @Test
-    fun `free user transaction limit is enforced`() {
+    fun `signed in user can create unlimited wallets`() {
+        val g = gate(signedIn = true)
+        assertTrue(g.canCreateWallet(currentCount = 100))
+    }
+
+    @Test
+    fun `anonymous user transaction limit is enforced`() {
         val g = gate()
-        assertTrue(g.canCreateTransaction(currentMonthCount = 99))
-        assertFalse(g.canCreateTransaction(currentMonthCount = 100))
+        assertTrue(g.canCreateTransaction(currentMonthCount = 199))
+        assertFalse(g.canCreateTransaction(currentMonthCount = 200))
+    }
+
+    @Test
+    fun `signed in user can create unlimited transactions`() {
+        val g = gate(signedIn = true)
+        assertTrue(g.canCreateTransaction(currentMonthCount = 1000))
     }
 
     @Test
     fun `premium insights require pro`() {
         assertFalse(gate().canAccessPremiumInsights())
         assertTrue(gate(pro = true).canAccessPremiumInsights())
+    }
+
+    @Test
+    fun `analytics require pro`() {
+        assertFalse(gate().canAccessAnalytics())
+        assertTrue(gate(pro = true).canAccessAnalytics())
     }
 
     @Test
