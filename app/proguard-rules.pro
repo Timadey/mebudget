@@ -8,6 +8,11 @@
 }
 -keep class com.mebudget.app.data.sync.models.** { *; }
 
+# AuthWithPasswordRequest lives outside models/ but is also serialized by Gson
+-keepclassmembers class com.mebudget.app.data.sync.AuthWithPasswordRequest {
+    <fields>;
+}
+
 # OkHttp/Retrofit ship their own rules; avoid noisy warnings for optional deps.
 -dontwarn okhttp3.internal.platform.**
 -dontwarn org.conscrypt.**
