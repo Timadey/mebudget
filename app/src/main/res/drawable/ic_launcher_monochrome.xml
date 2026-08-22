@@ -7,18 +7,18 @@
     <path
         android:fillColor="#111111"
         android:pathData="M24,24h60v60h-60z" />
-    <!-- Horizontal bars -->
+    <!-- Horizontal bars (centered vertically) -->
     <path
         android:fillColor="#111111"
-        android:pathData="M34,54h40v6h-40z" />
+        android:pathData="M34,40h40v6h-40z" />
     <path
         android:fillColor="#111111"
-        android:pathData="M34,42h40v6h-40z" />
+        android:pathData="M34,52h40v6h-40z" />
     <path
         android:fillColor="#111111"
-        android:pathData="M34,30h40v6h-40z" />
-    <!-- Circle -->
+        android:pathData="M34,64h40v6h-40z" />
+    <!-- Circle (centered vertically) -->
     <path
         android:fillColor="#111111"
-        android:pathData="M54,36m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
+        android:pathData="M54,46m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
 </vector>

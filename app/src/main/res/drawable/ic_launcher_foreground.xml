@@ -7,21 +7,21 @@
     <path
         android:fillColor="#0055FF"
         android:pathData="M24,24h60v60h-60z" />
-    <!-- Black horizontal bars -->
+    <!-- Black horizontal bars (centered vertically in blue rect) -->
     <path
         android:fillColor="#111111"
-        android:pathData="M34,54h40v6h-40z" />
+        android:pathData="M34,40h40v6h-40z" />
     <path
         android:fillColor="#111111"
-        android:pathData="M34,42h40v6h-40z" />
+        android:pathData="M34,52h40v6h-40z" />
     <path
         android:fillColor="#111111"
-        android:pathData="M34,30h40v6h-40z" />
-    <!-- Blue circle with black border -->
+        android:pathData="M34,64h40v6h-40z" />
+    <!-- Blue circle with black border (centered vertically) -->
     <path
         android:fillColor="#111111"
-        android:pathData="M54,36m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
+        android:pathData="M54,46m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
     <path
         android:fillColor="#0055FF"
-        android:pathData="M54,36m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+        android:pathData="M54,46m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
 </vector>
