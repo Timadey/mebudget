@@ -32,7 +32,8 @@ import androidx.compose.ui.unit.sp
 fun ProfileScreen(
     viewModel: ProfileViewModel,
     onSignInClick: () -> Unit,
-    onSubscriptionClick: () -> Unit
+    onSubscriptionClick: () -> Unit,
+    onQuickSpendClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -102,6 +103,17 @@ fun ProfileScreen(
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onQuickSpendClick,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(0.dp),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline)
+            ) {
+                Text("QUICK SPEND", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
 
             Spacer(modifier = Modifier.height(8.dp))

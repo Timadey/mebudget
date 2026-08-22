@@ -41,9 +41,15 @@ class QuickSpendViewModel(
     private val settings = MutableStateFlow(settingsStore.load())
     private val launchableApps = MutableStateFlow<List<LaunchableApp>>(emptyList())
     private val permissionTick = MutableStateFlow(0)
+    private var appsLoaded = false
 
     init {
         syncOverlayService()
+        // Load apps in background on first access
+        viewModelScope.launch {
+            launchableApps.value = installedAppSource.loadLaunchableApps()
+            appsLoaded = true
+        }
     }
 
     val uiState: StateFlow<QuickSpendUiState> = combine(
@@ -68,8 +74,11 @@ class QuickSpendViewModel(
     fun refresh() {
         permissionTick.value += 1
         syncOverlayService()
-        viewModelScope.launch {
-            launchableApps.value = installedAppSource.loadLaunchableApps()
+        if (!appsLoaded) {
+            viewModelScope.launch {
+                launchableApps.value = installedAppSource.loadLaunchableApps()
+                appsLoaded = true
+            }
         }
     }
 

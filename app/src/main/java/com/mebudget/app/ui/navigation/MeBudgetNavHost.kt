@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -186,11 +185,6 @@ fun MeBudgetNavHost(
                                     )
                                 }
                             }
-                        }
-                        IconButton(onClick = {
-                            navController.navigate(MeBudgetRoute.quickSpendSettings)
-                        }) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings")
                         }
                         PrivacyToggleButton(
                             privacyModeEnabled = privacyModeEnabled,
@@ -477,7 +471,8 @@ fun MeBudgetNavHost(
                     ProfileScreen(
                         viewModel = profileViewModel,
                         onSignInClick = { navController.navigate(MeBudgetRoute.signIn) },
-                        onSubscriptionClick = { navController.navigate(MeBudgetRoute.subscription) }
+                        onSubscriptionClick = { navController.navigate(MeBudgetRoute.subscription) },
+                        onQuickSpendClick = { navController.navigate(MeBudgetRoute.quickSpendSettings) }
                     )
                 }
 

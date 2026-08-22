@@ -4,8 +4,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -88,7 +90,7 @@ fun QuickSpendSettingsScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Settings") },
+                title = { Text("Quick Spend") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -102,7 +104,7 @@ fun QuickSpendSettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 Card(
@@ -118,11 +120,12 @@ fun QuickSpendSettingsScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Settings", style = MaterialTheme.typography.headlineSmall, color = AccentBlue)
-                        Text("Record expenses while using your bank or payment app, so your budget balance stays accurate.")
+                        Text("Quick Spend", style = MaterialTheme.typography.headlineSmall, color = AccentBlue)
+                        Text("Tap a floating button over your bank app to record expenses instantly. No need to switch apps.")
                         Text(
-                            "Manual entry only. MeBudget does not read your bank screen.",
-                            style = MaterialTheme.typography.bodySmall
+                            "Manual entry only. MeBudget never reads your bank screen.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -138,75 +141,30 @@ fun QuickSpendSettingsScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = if (state.setupComplete) "Ready over selected apps" else nextStep,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = AccentBlue
-                        )
-                        ChecklistRow("Choose quick-spend budget", hasBudget)
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Enable Quick Spend", style = MaterialTheme.typography.titleMedium, color = AccentBlue)
+                                Text("Show a small button over selected apps.", style = MaterialTheme.typography.bodySmall)
+                            }
+                            Switch(
+                                checked = state.settings.enabled,
+                                onCheckedChange = onToggleEnabled,
+                                colors = SwitchDefaults.colors(
+                                    checkedTrackColor = AccentBlue,
+                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ChecklistRow("Choose budget", hasBudget)
                         ChecklistRow("Allow floating button", state.overlayPermissionGranted)
                         ChecklistRow("Allow app detection", state.usageAccessGranted)
                         ChecklistRow("Select bank/payment apps", hasApps)
-                        ChecklistRow("Enable Quick Spend", state.settings.enabled)
-                    }
-                }
-            }
-
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
-                    shape = RoundedCornerShape(0.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("What you gain", style = MaterialTheme.typography.titleMedium, color = AccentBlue)
-                        Text("Record before or after payment.")
-                        Text("Avoid balance mismatch between your bank and budget.")
-                        Text("Works only on apps you choose.")
-                    }
-                }
-            }
-
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .offsetShadow(offset = 4.dp, color = MaterialTheme.colorScheme.outline),
-                    shape = RoundedCornerShape(0.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.outline)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Enable Quick Spend", style = MaterialTheme.typography.titleMedium, color = AccentBlue)
-                            Text("Show a small MeBudget button over selected apps.")
-                        }
-                        Switch(
-                            checked = state.settings.enabled,
-                            onCheckedChange = onToggleEnabled,
-                            colors = SwitchDefaults.colors(
-                                checkedTrackColor = AccentBlue,
-                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        )
                     }
                 }
             }

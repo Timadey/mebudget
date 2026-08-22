@@ -103,6 +103,7 @@ fun SubscriptionScreen(
                 ProSubscriptionContent(
                     subscriptionInfo = subscriptionInfo,
                     isCancelling = uiState.isLoading,
+                    error = uiState.error,
                     onCancelClick = { viewModel.showCancelDialog() },
                     onBack = onBack
                 )
@@ -317,6 +318,7 @@ private fun PlanSelectorRow(
 private fun ProSubscriptionContent(
     subscriptionInfo: SubscriptionInfo,
     isCancelling: Boolean,
+    error: String?,
     onCancelClick: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -393,6 +395,14 @@ private fun ProSubscriptionContent(
             } else {
                 Text("CANCEL SUBSCRIPTION", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
+        }
+
+        if (error != null) {
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
 
         Text(
