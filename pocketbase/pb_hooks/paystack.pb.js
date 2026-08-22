@@ -1,21 +1,18 @@
 // PocketBase JS hook: Paystack webhook → subscriptions
 //
+// Handles the full subscription lifecycle:
+//   - charge.success: save authorization code, create/update subscription
+//   - subscription.create/update: update subscription status
+//   - subscription.disable/cancel: mark subscription as cancelled
+//   - invoice.paid: extend subscription endDate
+//
 // NOTE: PocketBase only auto-loads hook files with a `*.pb.js` suffix, so this
-// file MUST stay named paystack.pb.js (a plain .js name would be treated as a
-// require()-able module and silently ignored).
+// file MUST stay named paystack.pb.js.
 //
-// Deploy alongside the PocketBase binary at pocketbase/pb_hooks/paystack.pb.js.
-// It registers POST /api/paystack/webhook, verifies the Paystack HMAC-SHA512
-// signature over the RAW request body, then upserts an "active" row in the
-// `subscriptions` collection for the matching user (matched by email).
-//
-// Requires the env var `POCKETBASE_PAYSTACK_SECRET_KEY` (your live or test
-// secret key — never the public key, and never ship it in the Android app).
-//
-// Configure the Paystack dashboard webhook URL to your public endpoint:
+// Requires the env var `POCKETBASE_PAYSTACK_SECRET_KEY`.
+// Configure the Paystack dashboard webhook URL to:
 //   https://pb.yourdomain.com/api/paystack/webhook
 
-// Load-time sanity log to confirm this hook file was picked up by PocketBase.
 console.log("paystack.pb.js hook: registering /api/paystack/webhook");
 
 routerAdd("POST", "/api/paystack/webhook", (e) => {
@@ -47,8 +44,9 @@ routerAdd("POST", "/api/paystack/webhook", (e) => {
   const data = payload.data || {};
 
   // --- Resolve user by email --------------------------------------------------
-  const d1 = data.customer || data.invoice || {};
-  const email = d1.email || data.email || "";
+  const customerData = data.customer || {};
+  const invoiceCustomer = (data.invoice || {}).customer || {};
+  const email = customerData.email || invoiceCustomer.email || data.email || "";
   if (!email) {
     return e.json(200, { received: true });
   }
@@ -60,34 +58,36 @@ routerAdd("POST", "/api/paystack/webhook", (e) => {
     user = null;
   }
   if (!user) {
-    // Unknown user (e.g. test charge with a throwaway email). Acknowledge so
-    // Paystack stops retrying; nothing to grant.
     return e.json(200, { received: true });
   }
 
   // --- Resolve plan -----------------------------------------------------------
-  // 1) Prefer the plan recorded in the checkout metadata (set by checkout.pb.js).
-  // 2) Fall back to Paystack subscription interval/amount heuristics.
   let planId = null;
   const metaPlan = (data.metadata || {}).plan || null;
   if (metaPlan === "pro_monthly" || metaPlan === "pro_annual") {
     planId = metaPlan;
   }
-  const sub = (data.subscription || {}).plan || data.plan || {};
+  const subPlan = (data.subscription || {}).plan || data.plan || {};
   if (!planId) {
-    const interval = sub.interval || null;
+    const interval = subPlan.interval || null;
     if (interval === "monthly") planId = "pro_monthly";
     else if (interval === "annually" || interval === "yearly") planId = "pro_annual";
   }
   if (!planId) {
-    const amount = sub.amount || data.amount || null;
+    const amount = subPlan.amount || data.amount || null;
     if (amount === 150000) planId = "pro_monthly";
     else if (amount === 1440000) planId = "pro_annual";
   }
 
+  // --- Extract subscription metadata ------------------------------------------
   const subscriptionRecord = payload.subscription || data.subscription || {};
   const subscriptionCode = data.subscription_code || subscriptionRecord.subscription_code || null;
+  const emailToken = data.email_token || subscriptionRecord.email_token || null;
   const reference = data.reference || null;
+
+  // --- Extract authorization code from charge.success -------------------------
+  const authorization = data.authorization || {};
+  const authorizationCode = authorization.authorization_code || null;
 
   // --- Build date window --------------------------------------------------------
   let startDate = new Date();
@@ -179,6 +179,8 @@ routerAdd("POST", "/api/paystack/webhook", (e) => {
     });
     if (reference) { record.set("paystackReference", reference); }
     if (subscriptionCode) { record.set("paystackSubscriptionCode", subscriptionCode); }
+    if (emailToken) { record.set("emailToken", emailToken); }
+    if (authorizationCode) { record.set("authorizationCode", authorizationCode); }
   } else {
     record.set("status", (event === "subscription.disable" || event === "subscription.cancel")
       ? "cancelled" : "expired");
@@ -191,6 +193,6 @@ routerAdd("POST", "/api/paystack/webhook", (e) => {
     throw new InternalServerError("Failed to save subscription");
   }
 
-  $app.logger().info("paystack webhook: " + event + " -> user " + user.id + " plan " + planId);
+  $app.logger().info("paystack webhook: " + event + " -> user " + user.id + " plan " + planId + (authorizationCode ? " auth " + authorizationCode : ""));
   return e.json(200, { received: true });
 });

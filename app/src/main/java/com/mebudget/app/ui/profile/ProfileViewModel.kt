@@ -7,6 +7,7 @@ import com.mebudget.app.data.auth.AuthState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 data class ProfileUiState(
@@ -18,12 +19,13 @@ data class ProfileUiState(
 )
 
 /**
- * Account/profile state for the Profile screen. Pro status is injected via
- * [isPro] so auth and billing stay decoupled (same pattern as FeatureGate).
+ * Account/profile state for the Profile screen. Pro status is collected
+ * reactively from [isProFlow] so UI updates immediately when subscription
+ * status changes.
  */
 class ProfileViewModel(
     private val authManager: AuthManager,
-    private val isPro: () -> Boolean = { false }
+    private val isProFlow: StateFlow<Boolean> = MutableStateFlow(false)
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ProfileUiState(isRestoringSession = true))
     val uiState: StateFlow<ProfileUiState> = _uiState
@@ -34,18 +36,20 @@ class ProfileViewModel(
             _uiState.value = _uiState.value.copy(isRestoringSession = false)
         }
         viewModelScope.launch {
-            authManager.authState.collectLatest { state ->
-                _uiState.value = when (state) {
+            combine(authManager.authState, isProFlow) { auth, isPro ->
+                when (auth) {
                     is AuthState.SignedIn -> ProfileUiState(
                         isSignedIn = true,
-                        isPro = isPro(),
-                        userName = state.name,
-                        userEmail = state.email
+                        isPro = isPro,
+                        userName = auth.name,
+                        userEmail = auth.email
                     )
                     AuthState.NotSignedIn -> ProfileUiState(
-                        isPro = isPro()
+                        isPro = isPro
                     )
                 }
+            }.collectLatest { state ->
+                _uiState.value = state
             }
         }
     }

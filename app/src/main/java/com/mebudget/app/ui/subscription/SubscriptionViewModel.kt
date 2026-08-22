@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.JsonObject
 import com.mebudget.app.billing.BillingPlan
+import com.mebudget.app.billing.SubscriptionManager
 import com.mebudget.app.data.sync.PocketBaseClient
 import com.mebudget.app.data.sync.PricingConfigManager
 import com.mebudget.app.data.sync.models.CheckoutResponse
@@ -25,7 +26,8 @@ data class SubscriptionUiState(
 
 class SubscriptionViewModel(
     private val pricingConfigManager: PricingConfigManager,
-    private val pocketBaseClient: PocketBaseClient
+    private val pocketBaseClient: PocketBaseClient,
+    private val subscriptionManager: SubscriptionManager
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         SubscriptionUiState(plans = pricingConfigManager.plans.value)
@@ -75,8 +77,17 @@ class SubscriptionViewModel(
     fun onPaymentSucceeded() {
         _uiState.value = _uiState.value.copy(checkoutUrl = null, isActivating = true)
         viewModelScope.launch {
-            // Brief activation delay so the webhook can grant Pro before refresh.
-            kotlinx.coroutines.delay(2000)
+            // Poll until Pro activates or timeout (2 minutes).
+            val maxAttempts = 24 // 24 * 5s = 120s = 2 min
+            repeat(maxAttempts) {
+                kotlinx.coroutines.delay(5000)
+                subscriptionManager.refresh()
+                if (subscriptionManager.isPro.value) {
+                    _uiState.value = _uiState.value.copy(isActivating = false, isSuccess = true)
+                    return@launch
+                }
+            }
+            // Timeout — still show success but let user know status may take a moment
             _uiState.value = _uiState.value.copy(isActivating = false, isSuccess = true)
         }
     }
@@ -84,5 +95,28 @@ class SubscriptionViewModel(
     /** WebView hit /checkout-cancel or the user abandoned. */
     fun onPaymentCanceled() {
         _uiState.value = _uiState.value.copy(checkoutUrl = null, error = "Payment was cancelled.")
+    }
+
+    /** Cancel the current subscription. Sets status to cancelled on server. */
+    fun cancelSubscription() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            val result = subscriptionManager.cancelSubscription()
+            result.fold(
+                onSuccess = { message ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = null,
+                        isSuccess = true
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = e.message ?: "Failed to cancel subscription."
+                    )
+                }
+            )
+        }
     }
 }

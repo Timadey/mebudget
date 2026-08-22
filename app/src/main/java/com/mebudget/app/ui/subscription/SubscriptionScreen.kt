@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,12 +47,17 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mebudget.app.billing.BillingPlan
+import com.mebudget.app.billing.SubscriptionInfo
 import com.mebudget.app.ui.theme.AccentBlue
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun SubscriptionScreen(
     viewModel: SubscriptionViewModel,
+    subscriptionInfo: SubscriptionInfo,
     onSubscribeSuccess: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -61,10 +67,12 @@ fun SubscriptionScreen(
         if (uiState.isSuccess) onSubscribeSuccess()
     }
 
+    val title = if (subscriptionInfo.isPro) "Manage Subscription" else "Upgrade to Pro"
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Upgrade to Pro") },
+                title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -74,7 +82,29 @@ fun SubscriptionScreen(
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            if (uiState.checkoutUrl != null) {
+            if (uiState.isActivating) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(modifier = Modifier.size(48.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "ACTIVATING PRO…",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+            } else if (subscriptionInfo.isPro) {
+                ProSubscriptionContent(
+                    subscriptionInfo = subscriptionInfo,
+                    onCancelClick = { viewModel.cancelSubscription() },
+                    onBack = onBack
+                )
+            } else if (uiState.checkoutUrl != null) {
                 PaystackWebView(
                     checkoutUrl = uiState.checkoutUrl!!,
                     onSuccess = viewModel::onPaymentSucceeded,
@@ -268,6 +298,86 @@ private fun PlanSelectorRow(
         RadioButton(
             selected = selected,
             onClick = onSelect
+        )
+    }
+}
+
+@Composable
+private fun ProSubscriptionContent(
+    subscriptionInfo: SubscriptionInfo,
+    onCancelClick: () -> Unit,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(0.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "PRO",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "You have an active Pro subscription",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                if (subscriptionInfo.planName != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Plan: ${subscriptionInfo.planName.replace("pro_", "").replaceFirstChar { it.uppercase() }}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (subscriptionInfo.expiryMillis != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    val dateFormat = SimpleDateFormat("dd MMMM yyyy", Locale.US)
+                    val expiryDate = dateFormat.format(Date(subscriptionInfo.expiryMillis))
+                    Text(
+                        text = "Renews on: $expiryDate",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = "Your Pro features will remain active until the end of the current billing period. After that, you will not be charged again.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        OutlinedButton(
+            onClick = onCancelClick,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(0.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+            ),
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.error)
+        ) {
+            Text("CANCEL SUBSCRIPTION", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        }
+
+        Text(
+            text = "Cancel to stop future renewals. Your Pro access continues until the current period ends.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

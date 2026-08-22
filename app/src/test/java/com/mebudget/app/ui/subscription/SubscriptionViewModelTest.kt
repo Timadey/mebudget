@@ -2,6 +2,7 @@ package com.mebudget.app.ui.subscription
 
 import com.google.gson.JsonObject
 import com.mebudget.app.billing.BillingPlan
+import com.mebudget.app.billing.SubscriptionManager
 import com.mebudget.app.data.sync.PocketBaseApi
 import com.mebudget.app.data.sync.PricingConfigManager
 import com.mebudget.app.data.sync.models.CheckoutResponse
@@ -30,6 +31,7 @@ class SubscriptionViewModelTest {
     private lateinit var pricing: PricingConfigManager
     private lateinit var api: PocketBaseApi
     private lateinit var client: com.mebudget.app.data.sync.PocketBaseClient
+    private lateinit var subscriptionManager: SubscriptionManager
 
     @Before
     fun setUp() {
@@ -39,6 +41,8 @@ class SubscriptionViewModelTest {
         api = mockk(relaxed = true)
         client = mockk(relaxed = true)
         every { client.api } returns api
+        subscriptionManager = mockk(relaxed = true)
+        every { subscriptionManager.isPro } returns MutableStateFlow(false)
     }
 
     @After
@@ -48,14 +52,14 @@ class SubscriptionViewModelTest {
 
     @Test
     fun `loads plans on init`() = runTest(dispatcher) {
-        val viewModel = SubscriptionViewModel(pricing, client)
+        val viewModel = SubscriptionViewModel(pricing, client, subscriptionManager)
 
         assertEquals(2, viewModel.uiState.value.plans.size)
     }
 
     @Test
     fun `selecting plan updates state`() = runTest(dispatcher) {
-        val viewModel = SubscriptionViewModel(pricing, client)
+        val viewModel = SubscriptionViewModel(pricing, client, subscriptionManager)
 
         viewModel.selectPlan(BillingPlan.ANNUAL)
 
@@ -64,7 +68,7 @@ class SubscriptionViewModelTest {
 
     @Test
     fun `startCheckout without selected plan is no-op`() = runTest(dispatcher) {
-        val viewModel = SubscriptionViewModel(pricing, client)
+        val viewModel = SubscriptionViewModel(pricing, client, subscriptionManager)
 
         viewModel.startCheckout()
         dispatcher.scheduler.advanceUntilIdle()
@@ -80,7 +84,7 @@ class SubscriptionViewModelTest {
             accessCode = "acc1",
             reference = "ref1"
         )
-        val viewModel = SubscriptionViewModel(pricing, client)
+        val viewModel = SubscriptionViewModel(pricing, client, subscriptionManager)
         viewModel.selectPlan(BillingPlan.MONTHLY)
 
         viewModel.startCheckout()
@@ -94,7 +98,7 @@ class SubscriptionViewModelTest {
     @Test
     fun `startCheckout surfaces failure`() = runTest(dispatcher) {
         coEvery { api.createCheckout(any()) } throws RuntimeException("offline")
-        val viewModel = SubscriptionViewModel(pricing, client)
+        val viewModel = SubscriptionViewModel(pricing, client, subscriptionManager)
         viewModel.selectPlan(BillingPlan.MONTHLY)
 
         viewModel.startCheckout()
@@ -105,8 +109,8 @@ class SubscriptionViewModelTest {
     }
 
     @Test
-    fun `activate after payment flags isSuccess for subscription refresh`() = runTest(dispatcher) {
-        val viewModel = SubscriptionViewModel(pricing, client)
+    fun `activate after payment polls and flags isSuccess`() = runTest(dispatcher) {
+        val viewModel = SubscriptionViewModel(pricing, client, subscriptionManager)
 
         viewModel.onPaymentSucceeded()
         dispatcher.scheduler.advanceUntilIdle()
@@ -117,7 +121,7 @@ class SubscriptionViewModelTest {
 
     @Test
     fun `cancel clears checkout url`() = runTest(dispatcher) {
-        val viewModel = SubscriptionViewModel(pricing, client)
+        val viewModel = SubscriptionViewModel(pricing, client, subscriptionManager)
         viewModel.selectPlan(BillingPlan.MONTHLY)
         viewModel.onPaymentCanceled()
 

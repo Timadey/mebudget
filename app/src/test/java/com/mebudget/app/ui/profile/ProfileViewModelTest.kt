@@ -46,7 +46,8 @@ class ProfileViewModelTest {
     @Test
     fun `signed out user sees empty profile`() = runTest(dispatcher) {
         coEvery { authManager.restoreSession() } answers { Unit }
-        val viewModel = ProfileViewModel(authManager, isPro = { false })
+        val isProFlow = MutableStateFlow(false)
+        val viewModel = ProfileViewModel(authManager, isProFlow)
         dispatcher.scheduler.advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isSignedIn)
@@ -57,7 +58,8 @@ class ProfileViewModelTest {
 
     @Test
     fun `restores session and shows signed in profile`() = runTest(dispatcher) {
-        val viewModel = ProfileViewModel(authManager, isPro = { false })
+        val isProFlow = MutableStateFlow(false)
+        val viewModel = ProfileViewModel(authManager, isProFlow)
         dispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.isSignedIn)
@@ -68,8 +70,9 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `pro status is read from injected lambda`() = runTest(dispatcher) {
-        val viewModel = ProfileViewModel(authManager, isPro = { true })
+    fun `pro status is read from injected flow`() = runTest(dispatcher) {
+        val isProFlow = MutableStateFlow(true)
+        val viewModel = ProfileViewModel(authManager, isProFlow)
         dispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.isSignedIn)
@@ -81,7 +84,8 @@ class ProfileViewModelTest {
         coEvery { authManager.signOut() } answers {
             authFlow.value = AuthState.NotSignedIn
         }
-        val viewModel = ProfileViewModel(authManager, isPro = { false })
+        val isProFlow = MutableStateFlow(false)
+        val viewModel = ProfileViewModel(authManager, isProFlow)
         dispatcher.scheduler.advanceUntilIdle()
         assertTrue(viewModel.uiState.value.isSignedIn)
 

@@ -10,8 +10,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,6 +50,7 @@ import com.mebudget.app.data.BudgetEntity
 import com.mebudget.app.billing.FeatureGate
 import com.mebudget.app.data.sync.LimitsConfigManager
 import com.mebudget.app.data.sync.PricingConfigManager
+import com.mebudget.app.data.sync.SyncState
 import com.mebudget.app.ui.auth.SignInScreen
 import com.mebudget.app.ui.auth.SignInViewModel
 import com.mebudget.app.ui.auth.SignInViewModelFactory
@@ -119,6 +123,8 @@ fun MeBudgetNavHost(
     // the refresh loop is cancelled automatically on sign-out.
     LaunchedEffect(Unit) { syncDeps.authManager.restoreSession() }
     val authState by syncDeps.authManager.authState.collectAsState()
+    val syncState by syncDeps.syncEngine.syncState.collectAsState()
+    val syncScope = rememberCoroutineScope()
     LaunchedEffect(authState) {
         if (authState.isSignedIn) {
             syncDeps.subscriptionManager.refresh()
@@ -149,6 +155,29 @@ fun MeBudgetNavHost(
                 CenterAlignedTopAppBar(
                     title = { Text("MeBudget", style = MaterialTheme.typography.titleLarge) },
                     actions = {
+                        if (authState.isSignedIn) {
+                            IconButton(
+                                onClick = { syncScope.launch { syncDeps.syncEngine.syncNow() } },
+                                enabled = syncState !is SyncState.Syncing
+                            ) {
+                                when (syncState) {
+                                    is SyncState.Syncing -> CircularProgressIndicator(
+                                        modifier = Modifier.size(22.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                    is SyncState.Error -> Icon(
+                                        Icons.Default.Warning,
+                                        contentDescription = "Sync failed, tap to retry",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                    else -> Icon(
+                                        Icons.Default.Refresh,
+                                        contentDescription = "Sync now"
+                                    )
+                                }
+                            }
+                        }
                         IconButton(onClick = {
                             navController.navigate(MeBudgetRoute.quickSpendSettings)
                         }) {
@@ -285,7 +314,6 @@ fun MeBudgetNavHost(
             ) {
                 composable(MeBudgetRoute.budgets) {
                     val syncDeps = context.applicationContext.syncDependencies()
-                    val syncState by syncDeps.syncEngine.syncState.collectAsState()
                     val scope = rememberCoroutineScope()
                     val limitsConfigManager = remember { LimitsConfigManager(syncDeps.client) }
                     val limits by limitsConfigManager.limits.collectAsState()
@@ -402,14 +430,16 @@ fun MeBudgetNavHost(
                     val subscriptionViewModel: SubscriptionViewModel = viewModel(
                         factory = SubscriptionViewModelFactory(
                             pricingConfigManager = pricingConfigManager,
-                            pocketBaseClient = syncDeps.client
+                            pocketBaseClient = syncDeps.client,
+                            subscriptionManager = syncDeps.subscriptionManager
                         )
                     )
                     val scope = rememberCoroutineScope()
+                    val subscriptionInfo by syncDeps.subscriptionManager.subscriptionInfo.collectAsState()
                     SubscriptionScreen(
                         viewModel = subscriptionViewModel,
+                        subscriptionInfo = subscriptionInfo,
                         onSubscribeSuccess = {
-                            scope.launch { syncDeps.subscriptionManager.refresh() }
                             navController.popBackStack()
                         },
                         onBack = { navController.popBackStack() }
@@ -432,7 +462,7 @@ fun MeBudgetNavHost(
                     val profileViewModel: ProfileViewModel = viewModel(
                         factory = ProfileViewModelFactory(
                             authManager = context.applicationContext.authManager(),
-                            isPro = { syncDeps.subscriptionManager.isPro.value }
+                            isProFlow = syncDeps.subscriptionManager.isPro
                         )
                     )
                     ProfileScreen(

@@ -80,6 +80,12 @@ interface PocketBaseApi {
     suspend fun setRealtimeSubscriptions(
         @Body body: JsonObject
     )
+
+    @POST("api/{endpoint}")
+    suspend fun post(
+        @Path("endpoint", encoded = true) endpoint: String,
+        @Body body: JsonObject? = null
+    ): JsonObject
 }
 
 data class AuthWithPasswordRequest(
