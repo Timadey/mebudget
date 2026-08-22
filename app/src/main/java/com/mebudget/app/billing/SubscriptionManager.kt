@@ -30,6 +30,12 @@ private val Context.subscriptionDataStore by preferencesDataStore(name = "subscr
  * The server webhook owns the `subscriptions` collection; the app is read-only
  * (the collection's create/update rules deny everything but the superuser).
  */
+data class SubscriptionInfo(
+    val isPro: Boolean = false,
+    val planName: String? = null,
+    val expiryMillis: Long? = null
+)
+
 class SubscriptionManager(
     private val pocketBaseClient: PocketBaseClient,
     private val authManager: AuthManager,
@@ -39,6 +45,9 @@ class SubscriptionManager(
 ) {
     private val _isPro = MutableStateFlow(false)
     val isPro: StateFlow<Boolean> = _isPro.asStateFlow()
+
+    private val _subscriptionInfo = MutableStateFlow(SubscriptionInfo())
+    val subscriptionInfo: StateFlow<SubscriptionInfo> = _subscriptionInfo.asStateFlow()
 
     @Volatile
     private var cachedExpiryMillis: Long? = null
@@ -59,7 +68,7 @@ class SubscriptionManager(
     suspend fun refresh() {
         val auth = authManager.authState.first()
         if (auth !is AuthState.SignedIn) {
-            apply(expiryMillis = null, preserveOnFailure = false)
+            apply(expiryMillis = null, planName = null, preserveOnFailure = false)
             return
         }
         try {
@@ -70,14 +79,40 @@ class SubscriptionManager(
                 filter = "status = 'active'",
                 sort = "-endDate"
             )
-            val expiry = response.items.firstOrNull()?.let { parsePocketBaseDate(it) }
-            apply(expiryMillis = expiry, preserveOnFailure = false)
+            val record = response.items.firstOrNull()
+            val expiry = record?.let { parsePocketBaseDate(it) }
+            val planName = record?.get("plan")?.takeIf { !it.isJsonNull }?.asString
+            apply(expiryMillis = expiry, planName = planName, preserveOnFailure = false)
         } catch (_: Exception) {
-            apply(expiryMillis = null, preserveOnFailure = true)
+            apply(expiryMillis = null, planName = null, preserveOnFailure = true)
         }
     }
 
-    private fun apply(expiryMillis: Long?, preserveOnFailure: Boolean) {
+    /**
+     * Cancels the user's Paystack subscription. The subscription continues
+     * until the end of the paid period (graceful cancel).
+     */
+    suspend fun cancelSubscription(): Result<String> {
+        val auth = authManager.authState.first()
+        if (auth !is AuthState.SignedIn) {
+            return Result.failure(Exception("Not signed in"))
+        }
+        return try {
+            val response = pocketBaseClient.api.post(
+                endpoint = "subscriptions/cancel",
+                body = null
+            )
+            val endDate = response.get("endDate")?.takeIf { !it.isJsonNull }?.asString
+            val message = response.get("message")?.takeIf { !it.isJsonNull }?.asString
+                ?: "Subscription cancelled"
+            refresh()
+            Result.success(message)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun apply(expiryMillis: Long?, planName: String? = null, preserveOnFailure: Boolean) {
         val effective = when {
             expiryMillis != null -> expiryMillis
             preserveOnFailure -> cachedExpiryMillis
@@ -86,6 +121,11 @@ class SubscriptionManager(
         val active = isActive(effective)
         cachedExpiryMillis = effective
         _isPro.value = active
+        _subscriptionInfo.value = SubscriptionInfo(
+            isPro = active,
+            planName = planName,
+            expiryMillis = effective
+        )
         if (effective != null) {
             scope.launch { cache.saveExpiryMillis(effective) }
         } else if (!preserveOnFailure) {

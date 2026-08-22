@@ -33,4 +33,10 @@ interface SyncMetadataDao {
 
     @Query("DELETE FROM sync_metadata")
     suspend fun clearAll()
+
+    @Query("""
+        SELECT COUNT(*) FROM sync_metadata
+        WHERE entityType = :entityType AND remoteId IS NULL AND deleted = 0
+    """)
+    suspend fun countUnsyncedByType(entityType: String): Int
 }

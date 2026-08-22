@@ -60,7 +60,7 @@ fun SyncStatusBanner(
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
                     Text(
-                        text = syncState.message,
+                        text = SyncState.friendlyMessage(syncState.message),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onErrorContainer

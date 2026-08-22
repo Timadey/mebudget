@@ -52,6 +52,13 @@ class SyncEngine(
     /** True while the realtime SSE stream is connected. */
     val isListening get() = realtimeListener.isListening
 
+    /** Number of local records that have never been pushed to the server. */
+    suspend fun pendingCount(): Int = runCatching {
+        metadataDao.countUnsyncedByType(SyncEntityType.BUDGET) +
+            metadataDao.countUnsyncedByType(SyncEntityType.WALLET) +
+            metadataDao.countUnsyncedByType(SyncEntityType.TRANSACTION)
+    }.getOrDefault(0)
+
     // ------------------------------------------------------------------
     // First-sync merge support
     // ------------------------------------------------------------------
@@ -100,7 +107,8 @@ class SyncEngine(
         _syncState.value = SyncState.Syncing
         return try {
             block()
-            _syncState.value = SyncState.Idle
+            val pending = pendingCount()
+            _syncState.value = if (pending > 0) SyncState.Pending(pending) else SyncState.Idle
             Result.success(Unit)
         } catch (e: Exception) {
             _syncState.value = SyncState.Error(e.message ?: "Merge failed")
@@ -120,7 +128,8 @@ class SyncEngine(
         return try {
             pushLocalChanges()
             pullRemoteChanges()
-            _syncState.value = SyncState.Idle
+            val pending = pendingCount()
+            _syncState.value = if (pending > 0) SyncState.Pending(pending) else SyncState.Idle
             Result.success(Unit)
         } catch (e: Exception) {
             _syncState.value = SyncState.Error(e.message ?: "Sync failed")
