@@ -128,10 +128,26 @@ fun SubscriptionScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    Text(
+                        text = "Unlock the full experience",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black
+                    )
+
+                    Text(
+                        text = "Sync your data across devices, track spending patterns, and more.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     ComparisonCard()
                     ComparisonCard(isPro = true)
+
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     uiState.plans.forEach { plan ->
                         PlanSelectorRow(
@@ -166,7 +182,7 @@ fun SubscriptionScreen(
                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         } else {
                             Text(
-                                "PAY WITH PAYSTACK",
+                                "UPGRADE NOW",
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 2.sp
                             )
@@ -174,7 +190,7 @@ fun SubscriptionScreen(
                     }
 
                     Text(
-                        text = "You'll be taken to a secure Paystack payment page. No card details are stored on your device.",
+                        text = "Secure payment via Paystack. Cancel anytime.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -260,7 +276,7 @@ private fun ComparisonCard(isPro: Boolean = false) {
             if (isPro) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.outline
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isPro) 4.dp else 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -270,12 +286,13 @@ private fun ComparisonCard(isPro: Boolean = false) {
                 color = if (isPro) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             items.forEach {
                 Text(
-                    text = "• $it",
+                    text = "✓  $it",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isPro) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -288,29 +305,43 @@ private fun PlanSelectorRow(
     selected: Boolean,
     onSelect: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onSelect,
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) AccentBlue.copy(alpha = 0.1f)
+            else MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(
+            2.dp,
+            if (selected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.outline
+        )
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = plan.displayName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "₦${plan.price / 100} / ${if (plan.interval == "monthly") "month" else "year"}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = plan.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "₦${plan.price / 100} / ${if (plan.interval == "monthly") "month" else "year"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            RadioButton(
+                selected = selected,
+                onClick = onSelect
             )
         }
-        RadioButton(
-            selected = selected,
-            onClick = onSelect
-        )
     }
 }
 

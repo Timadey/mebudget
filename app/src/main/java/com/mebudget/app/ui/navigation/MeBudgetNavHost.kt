@@ -133,16 +133,11 @@ fun MeBudgetNavHost(
             syncDeps.subscriptionManager.refresh()
             syncDeps.syncEngine.startRealtimeUpdates()
 
-            // Auto-sync on first sign-in: check local vs cloud data
-            val local = syncDeps.syncEngine.getLocalDataCounts()
-            val cloud = syncDeps.syncEngine.getCloudDataCounts()
-            val hasLocal = local.budgets + local.wallets + local.transactions > 0
-            val hasCloud = cloud.budgets + cloud.wallets + cloud.transactions > 0
-
-            when {
-                hasLocal && hasCloud -> navController.navigate(MeBudgetRoute.syncMerge)
-                hasLocal && !hasCloud -> syncScope.launch { syncDeps.syncEngine.uploadLocalData() }
-                !hasLocal && hasCloud -> syncScope.launch { syncDeps.syncEngine.downloadCloudData() }
+            // Auto-sync on sign-in: check for actual conflicts
+            if (syncDeps.syncEngine.hasActualConflict()) {
+                navController.navigate(MeBudgetRoute.syncMerge)
+            } else {
+                syncScope.launch { syncDeps.syncEngine.syncNow() }
             }
 
             while (true) {
