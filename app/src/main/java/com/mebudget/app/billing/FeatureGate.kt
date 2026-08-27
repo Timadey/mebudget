@@ -14,21 +14,23 @@ class FeatureGate(
 ) {
 
     fun canCreateBudget(currentCount: Int): Boolean {
-        if (isPro()) return true
+        if (isSignedIn()) return true
         return currentCount < limits.freeMaxBudgets
     }
 
     fun canCreateWallet(currentCount: Int): Boolean {
-        if (isPro()) return true
+        if (isSignedIn()) return true
         return currentCount < limits.freeMaxWalletsPerBudget
     }
 
     fun canCreateTransaction(currentMonthCount: Int): Boolean {
-        if (isPro()) return true
+        if (isSignedIn()) return true
         return currentMonthCount < limits.freeMaxTransactionsPerMonth
     }
 
     fun canAccessPremiumInsights(): Boolean = isPro()
+
+    fun canAccessAnalytics(): Boolean = isPro()
 
     fun canSyncToCloud(): Boolean = isSignedIn() && isPro()
 }

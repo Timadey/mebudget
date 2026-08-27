@@ -69,7 +69,8 @@ fun updateTransactionCommand(
         dateEpochDay = dateEpochDay,
         sourceWalletId = sourceWalletId,
         destinationWalletId = destinationWalletId,
-        note = note.normalizedNote()
+        note = note.normalizedNote(),
+        updatedAtMillis = System.currentTimeMillis()
     )
 }
 

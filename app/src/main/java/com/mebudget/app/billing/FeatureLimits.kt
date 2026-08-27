@@ -5,9 +5,9 @@ package com.mebudget.app.billing
  * server `config` collection when reachable (see [fromServerConfig]).
  */
 data class FeatureLimits(
-    val freeMaxBudgets: Int = 2,
-    val freeMaxWalletsPerBudget: Int = 5,
-    val freeMaxTransactionsPerMonth: Int = 100
+    val freeMaxBudgets: Int = Int.MAX_VALUE,
+    val freeMaxWalletsPerBudget: Int = Int.MAX_VALUE,
+    val freeMaxTransactionsPerMonth: Int = 200
 ) {
     companion object {
         val DEFAULT = FeatureLimits()

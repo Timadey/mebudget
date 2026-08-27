@@ -21,7 +21,8 @@ data class SubscriptionUiState(
     val isActivating: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isSuccess: Boolean = false
+    val isSuccess: Boolean = false,
+    val showCancelDialog: Boolean = false
 )
 
 class SubscriptionViewModel(
@@ -97,10 +98,20 @@ class SubscriptionViewModel(
         _uiState.value = _uiState.value.copy(checkoutUrl = null, error = "Payment was cancelled.")
     }
 
-    /** Cancel the current subscription. Sets status to cancelled on server. */
-    fun cancelSubscription() {
+    /** Show the cancel confirmation dialog. */
+    fun showCancelDialog() {
+        _uiState.value = _uiState.value.copy(showCancelDialog = true)
+    }
+
+    /** Dismiss the cancel confirmation dialog. */
+    fun dismissCancelDialog() {
+        _uiState.value = _uiState.value.copy(showCancelDialog = false)
+    }
+
+    /** Cancel the current subscription after user confirms. Sets status to cancelled on server. */
+    fun confirmCancelSubscription() {
+        _uiState.value = _uiState.value.copy(showCancelDialog = false, isLoading = true, error = null)
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val result = subscriptionManager.cancelSubscription()
             result.fold(
                 onSuccess = { message ->

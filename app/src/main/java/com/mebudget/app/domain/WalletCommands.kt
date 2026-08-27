@@ -45,7 +45,8 @@ fun planWalletUpdate(
 ): WalletEntity {
     return existing.copy(
         name = definition.name,
-        plannedAmount = definition.plannedAmount
+        plannedAmount = definition.plannedAmount,
+        updatedAtMillis = System.currentTimeMillis()
     )
 }
 
@@ -53,7 +54,7 @@ fun planWalletArchive(
     existing: WalletEntity,
     archived: Boolean
 ): WalletEntity {
-    return existing.copy(archived = archived)
+    return existing.copy(archived = archived, updatedAtMillis = System.currentTimeMillis())
 }
 
 fun planWalletReorder(
@@ -71,6 +72,6 @@ fun planWalletReorder(
     mutable[index] = target
 
     return mutable.mapIndexed { updatedIndex, item ->
-        item.copy(sortOrder = updatedIndex)
+        item.copy(sortOrder = updatedIndex, updatedAtMillis = System.currentTimeMillis())
     }
 }

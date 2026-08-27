@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CardDefaults
@@ -101,9 +102,20 @@ fun SubscriptionScreen(
             } else if (subscriptionInfo.isPro) {
                 ProSubscriptionContent(
                     subscriptionInfo = subscriptionInfo,
-                    onCancelClick = { viewModel.cancelSubscription() },
+                    isCancelling = uiState.isLoading,
+                    error = uiState.error,
+                    onCancelClick = { viewModel.showCancelDialog() },
                     onBack = onBack
                 )
+                if (uiState.showCancelDialog) {
+                    CancelSubscriptionDialog(
+                        expiryDate = subscriptionInfo.expiryMillis?.let {
+                            SimpleDateFormat("dd MMMM yyyy", Locale.US).format(Date(it))
+                        } ?: "the end of your billing period",
+                        onConfirm = { viewModel.confirmCancelSubscription() },
+                        onDismiss = { viewModel.dismissCancelDialog() }
+                    )
+                }
             } else if (uiState.checkoutUrl != null) {
                 PaystackWebView(
                     checkoutUrl = uiState.checkoutUrl!!,
@@ -116,10 +128,26 @@ fun SubscriptionScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    Text(
+                        text = "Unlock the full experience",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black
+                    )
+
+                    Text(
+                        text = "Sync your data across devices, track spending patterns, and more.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     ComparisonCard()
                     ComparisonCard(isPro = true)
+
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     uiState.plans.forEach { plan ->
                         PlanSelectorRow(
@@ -154,7 +182,7 @@ fun SubscriptionScreen(
                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         } else {
                             Text(
-                                "PAY WITH PAYSTACK",
+                                "UPGRADE NOW",
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 2.sp
                             )
@@ -162,7 +190,7 @@ fun SubscriptionScreen(
                     }
 
                     Text(
-                        text = "You'll be taken to a secure Paystack payment page. No card details are stored on your device.",
+                        text = "Secure payment via Paystack. Cancel anytime.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -233,9 +261,9 @@ private fun PaystackWebView(
 @Composable
 private fun ComparisonCard(isPro: Boolean = false) {
     val items = if (isPro) {
-        listOf("Unlimited budgets", "Premium insights", "Cloud sync", "Priority support")
+        listOf("Unlimited budgets & wallets", "Advanced analytics", "Cloud sync")
     } else {
-        listOf("2 budgets", "Basic insights", "No sync")
+        listOf("Unlimited budgets & wallets", "200 transactions/month", "No sync")
     }
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -248,7 +276,7 @@ private fun ComparisonCard(isPro: Boolean = false) {
             if (isPro) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.outline
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isPro) 4.dp else 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -258,12 +286,13 @@ private fun ComparisonCard(isPro: Boolean = false) {
                 color = if (isPro) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             items.forEach {
                 Text(
-                    text = "• $it",
+                    text = "✓  $it",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isPro) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -276,35 +305,51 @@ private fun PlanSelectorRow(
     selected: Boolean,
     onSelect: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onSelect,
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) AccentBlue.copy(alpha = 0.1f)
+            else MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(
+            2.dp,
+            if (selected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.outline
+        )
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = plan.displayName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "₦${plan.price / 100} / ${if (plan.interval == "monthly") "month" else "year"}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = plan.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "₦${plan.price / 100} / ${if (plan.interval == "monthly") "month" else "year"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            RadioButton(
+                selected = selected,
+                onClick = onSelect
             )
         }
-        RadioButton(
-            selected = selected,
-            onClick = onSelect
-        )
     }
 }
 
 @Composable
 private fun ProSubscriptionContent(
     subscriptionInfo: SubscriptionInfo,
+    isCancelling: Boolean,
+    error: String?,
     onCancelClick: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -357,7 +402,7 @@ private fun ProSubscriptionContent(
         }
 
         Text(
-            text = "Your Pro features will remain active until the end of the current billing period. After that, you will not be charged again.",
+            text = "If you cancel your subscription, your Pro features will remain active until the end of the current billing period. You will not be charged again.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -369,9 +414,26 @@ private fun ProSubscriptionContent(
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.error
             ),
-            border = BorderStroke(2.dp, MaterialTheme.colorScheme.error)
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.error),
+            enabled = !isCancelling
         ) {
-            Text("CANCEL SUBSCRIPTION", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            if (isCancelling) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.error
+                )
+            } else {
+                Text("CANCEL SUBSCRIPTION", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            }
+        }
+
+        if (error != null) {
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
 
         Text(
@@ -380,4 +442,41 @@ private fun ProSubscriptionContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+@Composable
+private fun CancelSubscriptionDialog(
+    expiryDate: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Cancel Subscription?", fontWeight = FontWeight.Black) },
+        text = {
+            Text(
+                text = "If you cancel, your Pro features will remain active until $expiryDate. You will not be charged again."
+            )
+        },
+        confirmButton = {
+            OutlinedButton(
+                onClick = onConfirm,
+                shape = RoundedCornerShape(0.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+            ) {
+                Text("CANCEL", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(0.dp)
+            ) {
+                Text("KEEP PRO", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            }
+        }
+    )
 }

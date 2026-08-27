@@ -42,7 +42,8 @@ fun validateBudgetUpdate(budget: BudgetEntity): Result<BudgetEntity> {
             name = validated.name,
             startDateEpochDay = validated.startDateEpochDay,
             endDateEpochDay = validated.endDateEpochDay,
-            negativeBalanceRule = validated.negativeBalanceRule
+            negativeBalanceRule = validated.negativeBalanceRule,
+            updatedAtMillis = System.currentTimeMillis()
         )
     }
 }

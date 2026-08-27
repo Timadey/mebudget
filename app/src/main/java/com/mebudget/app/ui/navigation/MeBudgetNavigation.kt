@@ -16,6 +16,9 @@ object MeBudgetRoute {
     const val subscription = "subscription"
     const val syncMerge = "sync/merge"
     const val profile = "profile"
+    const val privacyPolicy = "privacy-policy"
+    const val dataExport = "data-export"
+    const val dataDeletion = "data-deletion"
 
     fun budget(budgetId: Long): String = "$budget/$budgetId"
     fun wallet(budgetId: Long, walletId: Long): String = "$budget/$budgetId/$wallet/$walletId"

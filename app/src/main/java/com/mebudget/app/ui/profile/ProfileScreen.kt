@@ -32,7 +32,11 @@ import androidx.compose.ui.unit.sp
 fun ProfileScreen(
     viewModel: ProfileViewModel,
     onSignInClick: () -> Unit,
-    onSubscriptionClick: () -> Unit
+    onSubscriptionClick: () -> Unit,
+    onQuickSpendClick: () -> Unit = {},
+    onPrivacyPolicyClick: () -> Unit = {},
+    onDataExportClick: () -> Unit = {},
+    onDataDeletionClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -107,12 +111,56 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedButton(
+                onClick = onQuickSpendClick,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(0.dp),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline)
+            ) {
+                Text("QUICK SPEND", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
                 onClick = viewModel::signOut,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(0.dp),
                 border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Text("SIGN OUT", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onPrivacyPolicyClick,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(0.dp),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline)
+            ) {
+                Text("PRIVACY POLICY", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onDataExportClick,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(0.dp),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline)
+            ) {
+                Text("EXPORT MY DATA", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onDataDeletionClick,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(0.dp),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline)
+            ) {
+                Text("DELETE MY DATA", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
             }
         } else {
             Text(

@@ -112,10 +112,10 @@ class SyncEngineTest {
     @Test
     fun `syncNow includes the signed in user id when creating a wallet`() = runTest {
         coEvery { budgetDao.getAllBudgets() } returns listOf(
-            BudgetEntity(id = 1, name = "Groceries", createdAtMillis = 100L)
+            BudgetEntity(id = 1, name = "Groceries", createdAtMillis = 100L, updatedAtMillis = 200L)
         )
         coEvery { metadataDao.getByLocalId(SyncEntityType.BUDGET, 1) } returns
-            SyncMetadataEntity(id = 9, entityType = SyncEntityType.BUDGET, localId = 1, remoteId = "rec_b")
+            SyncMetadataEntity(id = 9, entityType = SyncEntityType.BUDGET, localId = 1, remoteId = "rec_b", lastSyncedAtMillis = Long.MAX_VALUE)
         coEvery { walletDao.getAllWallets() } returns listOf(
             WalletEntity(id = 2, budgetId = 1, name = "Cash", plannedAmount = 50_000, sortOrder = 0)
         )
@@ -132,15 +132,15 @@ class SyncEngineTest {
     @Test
     fun `syncNow includes the signed in user id when creating a transaction`() = runTest {
         coEvery { budgetDao.getAllBudgets() } returns listOf(
-            BudgetEntity(id = 1, name = "Groceries", createdAtMillis = 100L)
+            BudgetEntity(id = 1, name = "Groceries", createdAtMillis = 100L, updatedAtMillis = 200L)
         )
         coEvery { metadataDao.getByLocalId(SyncEntityType.BUDGET, 1) } returns
-            SyncMetadataEntity(id = 9, entityType = SyncEntityType.BUDGET, localId = 1, remoteId = "rec_b")
+            SyncMetadataEntity(id = 9, entityType = SyncEntityType.BUDGET, localId = 1, remoteId = "rec_b", lastSyncedAtMillis = Long.MAX_VALUE)
         coEvery { walletDao.getAllWallets() } returns listOf(
             WalletEntity(id = 2, budgetId = 1, name = "Cash", plannedAmount = 50_000, sortOrder = 0)
         )
         coEvery { metadataDao.getByLocalId(SyncEntityType.WALLET, 2) } returns
-            SyncMetadataEntity(id = 10, entityType = SyncEntityType.WALLET, localId = 2, remoteId = "rec_w")
+            SyncMetadataEntity(id = 10, entityType = SyncEntityType.WALLET, localId = 2, remoteId = "rec_w", lastSyncedAtMillis = Long.MAX_VALUE)
         coEvery { transactionDao.getAllTransactions() } returns listOf(
             TransactionEntity(
                 id = 3,

@@ -14,7 +14,8 @@ data class SignInUiState(
     val confirmPassword: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isSignedIn: Boolean = false
+    val isSignedIn: Boolean = false,
+    val consentGiven: Boolean = false
 )
 
 class SignInViewModel(
@@ -37,6 +38,10 @@ class SignInViewModel(
 
     fun onConfirmPasswordChanged(confirmPassword: String) {
         _uiState.value = _uiState.value.copy(confirmPassword = confirmPassword)
+    }
+
+    fun toggleConsent() {
+        _uiState.value = _uiState.value.copy(consentGiven = !_uiState.value.consentGiven)
     }
 
     fun signIn() {

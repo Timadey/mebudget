@@ -24,7 +24,8 @@ data class BudgetEntity(
     val startDateEpochDay: Long? = null,
     val endDateEpochDay: Long? = null,
     val negativeBalanceRule: NegativeBalanceRule = NegativeBalanceRule.WARN,
-    val createdAtMillis: Long = System.currentTimeMillis()
+    val createdAtMillis: Long = System.currentTimeMillis(),
+    val updatedAtMillis: Long = System.currentTimeMillis()
 )
 
 @Entity(
@@ -45,7 +46,8 @@ data class WalletEntity(
     val name: String,
     val plannedAmount: Long,
     val sortOrder: Int,
-    val archived: Boolean = false
+    val archived: Boolean = false,
+    val updatedAtMillis: Long = System.currentTimeMillis()
 )
 
 @Entity(
@@ -69,7 +71,8 @@ data class TransactionEntity(
     val sourceWalletId: Long? = null,
     val destinationWalletId: Long? = null,
     val note: String? = null,
-    val createdAtMillis: Long = System.currentTimeMillis()
+    val createdAtMillis: Long = System.currentTimeMillis(),
+    val updatedAtMillis: Long = System.currentTimeMillis()
 )
 
 data class BudgetSummary(
