@@ -77,8 +77,20 @@ class AuthManager(
         _authState.value = AuthState.NotSignedIn
     }
 
+    suspend fun deleteAccount() {
+        try {
+            val userId = userPreferences.userId.first() ?: return
+            pocketBaseClient.api.delete("users", userId)
+        } catch (_: Exception) {
+        }
+        pocketBaseClient.clearAuth()
+        userPreferences.clearAuthData()
+        _authState.value = AuthState.NotSignedIn
+    }
+
     /** Restores a persisted session (token + profile) without a network call. */
     suspend fun restoreSession() {
+        userPreferences.migrateTokenIfNeeded()
         val token = userPreferences.authToken.first()
         val userId = userPreferences.userId.first()
         val email = userPreferences.userEmail.first()

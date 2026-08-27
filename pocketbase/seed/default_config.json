@@ -1,8 +1,16 @@
-{
-  "key": "limits",
-  "value": {
-    "freeMaxBudgets": 2,
-    "freeMaxWalletsPerBudget": 5,
-    "freeMaxTransactionsPerMonth": 100
+[
+  {
+    "key": "limits",
+    "value": {
+      "freeMaxBudgets": 2,
+      "freeMaxWalletsPerBudget": 5,
+      "freeMaxTransactionsPerMonth": 100
+    }
+  },
+  {
+    "key": "site_url",
+    "value": {
+      "siteUrl": "https://mebudget.blackshade.site"
+    }
   }
-}
+]

@@ -1,8 +1,10 @@
 package com.mebudget.app.ui.auth
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -33,7 +36,8 @@ fun SignInScreen(
     viewModel: SignInViewModel,
     onSignInSuccess: () -> Unit,
     onSignUpClick: () -> Unit,
-    onContinueWithoutSignIn: () -> Unit
+    onContinueWithoutSignIn: () -> Unit,
+    onPrivacyPolicyClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -97,12 +101,29 @@ fun SignInScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = uiState.consentGiven,
+                onCheckedChange = { viewModel.toggleConsent() }
+            )
+            Text(
+                text = "I consent to the collection and processing of my personal data as described in the Privacy Policy.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.clickable { onPrivacyPolicyClick() }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = viewModel::signIn,
             modifier = Modifier.fillMaxWidth(),
-            enabled = !uiState.isLoading,
+            enabled = !uiState.isLoading && uiState.consentGiven,
             shape = RoundedCornerShape(0.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,

@@ -53,6 +53,7 @@ import com.mebudget.app.data.BudgetEntity
 import com.mebudget.app.billing.FeatureGate
 import com.mebudget.app.data.sync.LimitsConfigManager
 import com.mebudget.app.data.sync.PricingConfigManager
+import com.mebudget.app.data.sync.SiteConfigManager
 import com.mebudget.app.data.sync.SyncState
 import com.mebudget.app.ui.auth.SignInScreen
 import com.mebudget.app.ui.auth.SignInViewModel
@@ -70,6 +71,11 @@ import com.mebudget.app.ui.sync.MergeDialog
 import com.mebudget.app.ui.sync.MergeViewModel
 import com.mebudget.app.ui.sync.MergeViewModelFactory
 import com.mebudget.app.ui.navigation.MeBudgetRoute
+import com.mebudget.app.ui.privacy.PrivacyPolicyWebViewScreen
+import com.mebudget.app.ui.privacy.DataExportScreen
+import com.mebudget.app.ui.privacy.DataDeletionScreen
+import com.mebudget.app.data.UserDataManager
+import com.mebudget.app.data.AppDatabase
 import com.mebudget.app.ui.theme.AccentBlue
 
 /** PocketBase user JWTs are short-lived; renew well before they expire. */
@@ -418,7 +424,10 @@ fun MeBudgetNavHost(
                         onSignUpClick = {
                             navController.navigate(MeBudgetRoute.signUp)
                         },
-                        onContinueWithoutSignIn = { navController.popBackStack() }
+                        onContinueWithoutSignIn = { navController.popBackStack() },
+                        onPrivacyPolicyClick = {
+                            navController.navigate(MeBudgetRoute.privacyPolicy)
+                        }
                     )
                 }
 
@@ -433,7 +442,10 @@ fun MeBudgetNavHost(
                         onSignUpSuccess = {
                             navController.popBackStack(MeBudgetRoute.profile, inclusive = false)
                         },
-                        onBack = { navController.popBackStack() }
+                        onBack = { navController.popBackStack() },
+                        onPrivacyPolicyClick = {
+                            navController.navigate(MeBudgetRoute.privacyPolicy)
+                        }
                     )
                 }
 
@@ -482,7 +494,54 @@ fun MeBudgetNavHost(
                         viewModel = profileViewModel,
                         onSignInClick = { navController.navigate(MeBudgetRoute.signIn) },
                         onSubscriptionClick = { navController.navigate(MeBudgetRoute.subscription) },
-                        onQuickSpendClick = { navController.navigate(MeBudgetRoute.quickSpendSettings) }
+                        onQuickSpendClick = { navController.navigate(MeBudgetRoute.quickSpendSettings) },
+                        onPrivacyPolicyClick = { navController.navigate(MeBudgetRoute.privacyPolicy) },
+                        onDataExportClick = { navController.navigate(MeBudgetRoute.dataExport) },
+                        onDataDeletionClick = { navController.navigate(MeBudgetRoute.dataDeletion) }
+                    )
+                }
+
+                composable(MeBudgetRoute.privacyPolicy) {
+                    val siteConfigManager = remember { SiteConfigManager(syncDeps.client) }
+                    val siteUrl by siteConfigManager.siteUrl.collectAsState()
+                    LaunchedEffect(Unit) { siteConfigManager.refreshSiteUrl() }
+                    PrivacyPolicyWebViewScreen(
+                        privacyUrl = siteConfigManager.privacyPolicyUrl,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(MeBudgetRoute.dataExport) {
+                    val database = remember { AppDatabase.getInstance(context) }
+                    val userDataManager = remember {
+                        UserDataManager(
+                            budgetDao = database.budgetDao(),
+                            walletDao = database.walletDao(),
+                            transactionDao = database.transactionDao()
+                        )
+                    }
+                    DataExportScreen(
+                        userDataManager = userDataManager,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(MeBudgetRoute.dataDeletion) {
+                    val database = remember { AppDatabase.getInstance(context) }
+                    val userDataManager = remember {
+                        UserDataManager(
+                            budgetDao = database.budgetDao(),
+                            walletDao = database.walletDao(),
+                            transactionDao = database.transactionDao()
+                        )
+                    }
+                    DataDeletionScreen(
+                        userDataManager = userDataManager,
+                        authManager = context.applicationContext.authManager(),
+                        onBack = { navController.popBackStack() },
+                        onAccountDeleted = {
+                            navController.popBackStack(MeBudgetRoute.budgets, inclusive = false)
+                        }
                     )
                 }
 
